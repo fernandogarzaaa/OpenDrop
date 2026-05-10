@@ -7,7 +7,6 @@ selects the best quantization level that fits in the available memory budget.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 from opendrop.core.hardware import HardwareProfile
 
@@ -54,7 +53,7 @@ def _model_size_mb(params_b: float, bits: float) -> float:
 def select_quantization(
     profile: HardwareProfile,
     params_b: float,
-    preferred: Optional[str] = None,
+    preferred: str | None = None,
 ) -> QuantSpec:
     """Return the best QuantSpec that fits in the hardware memory budget.
 

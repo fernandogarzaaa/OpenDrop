@@ -11,10 +11,8 @@ import platform
 import re
 import shutil
 import subprocess
-import sys
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional
 
 import psutil
 
@@ -85,7 +83,7 @@ class HardwareProfile:
             + (" AVX2" if self.has_avx2 else "")
             + (" AVX512" if self.has_avx512 else "")
             + (" NEON" if self.has_neon else ""),
-            f"RAM         : {self.ram_mb / 1024:.1f} GB total, {self.free_ram_mb / 1024:.1f} GB free",
+            f"RAM         : {self.ram_mb / 1024:.1f} GB total, {self.free_ram_mb / 1024:.1f} GB free",  # noqa: E501
             f"GPU         : {self.gpu.name or self.gpu.kind.value}",
         ]
         if self.gpu.unified:
@@ -102,7 +100,7 @@ class HardwareProfile:
 # Internal helpers
 # ---------------------------------------------------------------------------
 
-def _run(cmd: list[str], timeout: int = 5) -> Optional[str]:
+def _run(cmd: list[str], timeout: int = 5) -> str | None:
     """Run a command and return stdout, or None on failure."""
     try:
         result = subprocess.run(
@@ -113,7 +111,7 @@ def _run(cmd: list[str], timeout: int = 5) -> Optional[str]:
         return None
 
 
-def _probe_apple_silicon() -> Optional[GPUInfo]:
+def _probe_apple_silicon() -> GPUInfo | None:
     if platform.system() != "Darwin":
         return None
     cpu_brand = _run(["sysctl", "-n", "machdep.cpu.brand_string"])
@@ -124,7 +122,7 @@ def _probe_apple_silicon() -> Optional[GPUInfo]:
     return None
 
 
-def _probe_nvidia() -> Optional[GPUInfo]:
+def _probe_nvidia() -> GPUInfo | None:
     if not shutil.which("nvidia-smi"):
         return None
     out = _run(
@@ -144,7 +142,7 @@ def _probe_nvidia() -> Optional[GPUInfo]:
     return GPUInfo(kind=GPUKind.NVIDIA, name=name, vram_mb=vram_mb)
 
 
-def _probe_amd() -> Optional[GPUInfo]:
+def _probe_amd() -> GPUInfo | None:
     for tool in ("rocm-smi", "rocminfo"):
         if not shutil.which(tool):
             continue
@@ -161,7 +159,7 @@ def _probe_amd() -> Optional[GPUInfo]:
     return None
 
 
-def _probe_intel_arc() -> Optional[GPUInfo]:
+def _probe_intel_arc() -> GPUInfo | None:
     # Intel GPU detection via clinfo or sycl-ls
     if shutil.which("sycl-ls"):
         out = _run(["sycl-ls"])

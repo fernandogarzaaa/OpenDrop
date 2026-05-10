@@ -10,7 +10,6 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
-from typing import Optional
 
 from rich.console import Console
 
@@ -21,7 +20,7 @@ class ConversionError(RuntimeError):
     pass
 
 
-def _find_convert_script() -> Optional[Path]:
+def _find_convert_script() -> Path | None:
     """Locate convert_hf_to_gguf.py from common llama.cpp install locations."""
     candidates = [
         shutil.which("convert_hf_to_gguf.py"),
@@ -36,7 +35,7 @@ def _find_convert_script() -> Optional[Path]:
     return None
 
 
-def _find_quantize_bin() -> Optional[Path]:
+def _find_quantize_bin() -> Path | None:
     """Locate llama-quantize binary."""
     candidates = [
         shutil.which("llama-quantize"),
@@ -78,7 +77,7 @@ def convert_to_gguf(
     model_dir: Path,
     output_dir: Path,
     outtype: str = "f16",
-    extra_args: Optional[list[str]] = None,
+    extra_args: list[str] | None = None,
 ) -> Path:
     """Convert a SafeTensors/PyTorch model directory to a fp16 GGUF.
 

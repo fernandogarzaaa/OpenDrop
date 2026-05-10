@@ -8,8 +8,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from opendrop.core.resolver import (
-    FileVariant,
-    ModelSpec,
     _check_license,
     _extract_hf_model_id,
     _is_direct_file_url,
@@ -64,7 +62,11 @@ class TestHelpers:
 
     def test_extract_hf_model_id(self):
         assert _extract_hf_model_id("https://huggingface.co/org/model") == "org/model"
-        assert _extract_hf_model_id("https://huggingface.co/org/model/resolve/main/f.gguf") == "org/model"
+        assert (
+            _extract_hf_model_id(
+                "https://huggingface.co/org/model/resolve/main/f.gguf"
+            ) == "org/model"
+        )
 
     def test_is_direct_file_url(self):
         assert _is_direct_file_url("https://hf.co/x/y/resolve/main/m.gguf") is True

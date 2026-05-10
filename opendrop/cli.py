@@ -21,7 +21,6 @@ import sys
 import threading
 from dataclasses import asdict, is_dataclass
 from pathlib import Path
-from typing import Optional
 
 import click
 from rich.console import Console
@@ -77,7 +76,7 @@ def main() -> None:
 @_token_option
 @_quant_option
 @click.option("--force", is_flag=True, help="Re-download even if already registered.")
-def pull(source: str, token: Optional[str], quant: Optional[str], force: bool) -> None:
+def pull(source: str, token: str | None, quant: str | None, force: bool) -> None:
     """Pull a model from SOURCE (HuggingFace URL, org/model ID, or local path)."""
     from opendrop.core.orchestrator import Orchestrator
 
@@ -97,7 +96,7 @@ def pull(source: str, token: Optional[str], quant: Optional[str], force: bool) -
 @click.argument("query")
 @_token_option
 @click.option("--limit", "-n", default=10, show_default=True, type=int, help="Max results.")
-def search(query: str, token: Optional[str], limit: int) -> None:
+def search(query: str, token: str | None, limit: int) -> None:
     """Search Hugging Face models by QUERY."""
     from opendrop.core.resolver import search_models
 
@@ -143,17 +142,19 @@ def search(query: str, token: Optional[str], limit: int) -> None:
 @click.option("--ctx", default=None, type=int,
               help="Context size (default: from config).")
 @click.option("--no-flash-attn", is_flag=True, help="Disable flash attention.")
-def run(model_id: str, port: Optional[int], ctx: Optional[int], no_flash_attn: bool) -> None:
+def run(model_id: str, port: int | None, ctx: int | None, no_flash_attn: bool) -> None:
     """Start the inference server for MODEL_ID and block."""
     from opendrop.config import get_config
     from opendrop.core.registry import Registry
-    from opendrop.inference.llamacpp import find_server_binary, LlamaCppServer
+    from opendrop.inference.llamacpp import LlamaCppServer, find_server_binary
 
     cfg = get_config()
     reg = Registry(cfg.registry_db())
     rec = reg.get_model(model_id)
     if not rec:
-        console.print(f"[red]Model '{model_id}' not found.[/red] Run `opendrop list` to see available models.")
+        console.print(
+            f"[red]Model '{model_id}' not found.[/red] Run `opendrop list` to see available models."
+        )
         sys.exit(1)
 
     gguf = Path(rec.path)
@@ -207,12 +208,13 @@ def run(model_id: str, port: Optional[int], ctx: Optional[int], no_flash_attn: b
 @click.option("--host", default=None, help="Bind host (default: from config).")
 @click.option("--port", "-p", default=None, type=int, help="Bind port (default: 11400).")
 @click.option("--reload", is_flag=True, help="Enable auto-reload for development.")
-def serve(host: Optional[str], port: Optional[int], reload: bool) -> None:
+def serve(host: str | None, port: int | None, reload: bool) -> None:
     """Start the multi-model OpenAI-compatible API server (with Web UI)."""
+    import uvicorn
+
     from opendrop.config import get_config
     from opendrop.inference.server import create_app
     from opendrop.ui.web import mount_web_ui
-    import uvicorn
 
     cfg = get_config()
     h = host or cfg.server.host
@@ -378,14 +380,15 @@ def fine_tune(
     rank: int,
     lr: float,
     batch_size: int,
-    output: Optional[str],
-    token: Optional[str],
+    output: str | None,
+    token: str | None,
     no_gguf: bool,
 ) -> None:
     """Fine-tune MODEL_ID with a dataset."""
     from opendrop.config import get_config
     from opendrop.core.registry import Registry
-    from opendrop.training.finetune import TrainingConfig, fine_tune as do_fine_tune
+    from opendrop.training.finetune import TrainingConfig
+    from opendrop.training.finetune import fine_tune as do_fine_tune
 
     cfg = get_config()
     reg = Registry(cfg.registry_db())
@@ -442,14 +445,13 @@ def fine_tune(
 @click.option("--output", "-o", default=None,
               help="Output directory (default: <model_path>/../gguf/).")
 @click.option("--keep-fp16", is_flag=True, help="Keep the intermediate fp16 GGUF.")
-def convert(model_path: str, quant: Optional[str], output: Optional[str], keep_fp16: bool) -> None:
+def convert(model_path: str, quant: str | None, output: str | None, keep_fp16: bool) -> None:
     """Convert a local SafeTensors model to GGUF.
 
     MODEL_PATH should be a directory containing .safetensors files.
     """
     from opendrop.core.converter import convert_and_quantize, needs_conversion
-    from opendrop.core.hardware import detect_hardware
-    from opendrop.core.quantizer import select_quantization, QUANT_BY_NAME
+    from opendrop.core.quantizer import QUANT_BY_NAME
 
     src = Path(model_path).expanduser().resolve()
     if not needs_conversion(src):
@@ -491,7 +493,7 @@ def tui() -> None:
 @main.command()
 @click.option("--quant-for", default=None, metavar="PARAMS_B",
               help="Show quantization options for a model of this size (e.g. 8 for 8B).")
-def hardware(quant_for: Optional[str]) -> None:
+def hardware(quant_for: str | None) -> None:
     """Show the detected hardware profile."""
     from opendrop.core.hardware import detect_hardware
     from opendrop.core.quantizer import quant_summary
@@ -515,8 +517,9 @@ def hardware(quant_for: Optional[str]) -> None:
 @main.command(name="config")
 def show_config() -> None:
     """Show the active configuration."""
-    from opendrop.config import get_config
     from platformdirs import user_config_dir
+
+    from opendrop.config import get_config
 
     config_path = Path(user_config_dir("opendrop")) / "config.toml"
     cfg = get_config()

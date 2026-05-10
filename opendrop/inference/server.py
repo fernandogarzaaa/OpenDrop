@@ -14,11 +14,11 @@ it is auto-started.
 
 from __future__ import annotations
 
-import json
 import time
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Any, AsyncIterator, Optional
+from typing import Any
 
 import httpx
 from fastapi import FastAPI, HTTPException, Request
@@ -45,11 +45,11 @@ class ChatCompletionRequest(BaseModel):
 
     model: str
     messages: list[ChatMessage]
-    max_tokens: Optional[int] = None
-    temperature: Optional[float] = None
-    top_p: Optional[float] = None
+    max_tokens: int | None = None
+    temperature: float | None = None
+    top_p: float | None = None
     stream: bool = False
-    stop: Optional[str | list[str]] = None
+    stop: str | list[str] | None = None
 
 
 class CompletionRequest(BaseModel):
@@ -57,9 +57,9 @@ class CompletionRequest(BaseModel):
 
     model: str
     prompt: str
-    max_tokens: Optional[int] = 256
-    temperature: Optional[float] = None
-    top_p: Optional[float] = None
+    max_tokens: int | None = 256
+    temperature: float | None = None
+    top_p: float | None = None
     stream: bool = False
 
 
@@ -69,8 +69,8 @@ class CompletionRequest(BaseModel):
 
 
 def create_app(
-    manager: Optional[ServerManager] = None,
-    registry: Optional[AsyncRegistry] = None,
+    manager: ServerManager | None = None,
+    registry: AsyncRegistry | None = None,
     allow_cors: bool = True,
 ) -> FastAPI:
     cfg = get_config()

@@ -4,14 +4,14 @@ from __future__ import annotations
 
 import hashlib
 from pathlib import Path
-from unittest.mock import MagicMock, patch, mock_open
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from opendrop.core.downloader import (
     DownloadError,
-    _filename_from_url,
     _file_sha256,
+    _filename_from_url,
     download,
 )
 

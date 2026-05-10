@@ -8,13 +8,11 @@ import re
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
 
 from rich.console import Console
 
 from opendrop.config import get_config
 from opendrop.core.converter import (
-    ConversionError,
     convert_and_quantize,
     needs_conversion,
 )
@@ -41,8 +39,8 @@ class Orchestrator:
 
     def __init__(
         self,
-        registry: Optional[Registry] = None,
-        profile: Optional[HardwareProfile] = None,
+        registry: Registry | None = None,
+        profile: HardwareProfile | None = None,
     ) -> None:
         cfg = get_config()
         self._cfg = cfg
@@ -64,8 +62,8 @@ class Orchestrator:
     def pull(
         self,
         source: str,
-        token: Optional[str] = None,
-        quant_override: Optional[str] = None,
+        token: str | None = None,
+        quant_override: str | None = None,
         force: bool = False,
     ) -> ModelRecord:
         """Full model pull pipeline.
@@ -135,7 +133,7 @@ class Orchestrator:
 
     def _find_existing(
         self, spec: ModelSpec, quant: QuantSpec
-    ) -> Optional[ModelRecord]:
+    ) -> ModelRecord | None:
         for rec in self._registry.list_models():
             if rec.model_id == spec.model_id and rec.quant == quant.name:
                 if Path(rec.path).exists():
@@ -147,7 +145,7 @@ class Orchestrator:
         spec: ModelSpec,
         quant: QuantSpec,
         dest_dir: Path,
-        token: Optional[str],
+        token: str | None,
     ) -> Path:
         """Return path to a ready-to-use GGUF file."""
 
