@@ -13,6 +13,7 @@ After training, produces either:
 
 from __future__ import annotations
 
+import json
 import os
 import platform
 import shutil
@@ -118,7 +119,7 @@ def _train_lora_peft(
     output_dir: Path,
     use_qlora: bool = False,
     token: Optional[str] = None,
-) -> Path:
+) -> tuple[Path, float]:
     """Run LoRA or QLoRA training via PEFT + TRL SFTTrainer."""
     _require_torch()
     _require_transformers()
@@ -229,7 +230,7 @@ def _train_lora_peft(
     model.save_pretrained(str(adapter_dir))
     tok.save_pretrained(str(adapter_dir))
     console.print(f"[green]✓ Adapter saved: {adapter_dir}[/green]")
-    return adapter_dir
+    return adapter_dir, float(final_loss or 0.0)
 
 
 # ---------------------------------------------------------------------------
@@ -258,7 +259,7 @@ def _train_mlx(
     output_dir.mkdir(parents=True, exist_ok=True)
     with open(data_file, "w", encoding="utf-8") as f:
         for sample in data:
-            f.write(__import__("json").dumps(sample) + "\n")
+            f.write(json.dumps(sample) + "\n")
 
     adapter_dir = output_dir / "adapter"
     adapter_dir.mkdir(parents=True, exist_ok=True)
@@ -336,7 +337,7 @@ def fine_tune(
     # --- LoRA / QLoRA -------------------------------------------------------
     elif cfg.method in ("lora", "qlora"):
         use_qlora = cfg.method == "qlora"
-        adapter_dir = _train_lora_peft(
+        adapter_dir, final_loss = _train_lora_peft(
             model_id, data, cfg, output_dir, use_qlora=use_qlora, token=token
         )
 
@@ -413,6 +414,11 @@ def fine_tune(
         except Exception as exc:
             console.print(f"[yellow]⚠ GGUF conversion failed: {exc}[/yellow]")
             console.print("[dim]The adapter is still usable directly.[/dim]")
+        else:
+            if merged_gguf is None:
+                console.print(
+                    "[yellow]⚠ GGUF step completed but no .gguf output file was found.[/yellow]"
+                )
 
     return TrainingResult(
         adapter_dir=adapter_dir,

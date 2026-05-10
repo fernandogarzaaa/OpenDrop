@@ -2,6 +2,7 @@
 
 All commands use Click.  Sub-commands:
   pull          Resolve, download, quantize, and register a model.
+  search        Search models on Hugging Face.
   run           Start the inference server for a specific model.
   serve         Start the multi-model OpenAI-compatible server.
   list          List all models in the registry.
@@ -17,6 +18,8 @@ All commands use Click.  Sub-commands:
 from __future__ import annotations
 
 import sys
+import threading
+from dataclasses import asdict, is_dataclass
 from pathlib import Path
 from typing import Optional
 
@@ -43,6 +46,16 @@ def _quant_option(f):
         "--quant", "-q", default=None,
         help="Force a specific quantization (e.g. Q4_K_M). Auto-detected if omitted.",
     )(f)
+
+
+def _section_values(section: object) -> dict:
+    """Return a printable key/value mapping from a config section object."""
+    values = asdict(section) if is_dataclass(section) else vars(section)
+    if len(values) == 1:
+        only_value = next(iter(values.values()))
+        if isinstance(only_value, dict):
+            return only_value
+    return values
 
 
 # ---------------------------------------------------------------------------
@@ -74,6 +87,49 @@ def pull(source: str, token: Optional[str], quant: Optional[str], force: bool) -
     except Exception as exc:
         console.print(f"[red]Error:[/red] {exc}")
         sys.exit(1)
+
+
+# ---------------------------------------------------------------------------
+# search
+# ---------------------------------------------------------------------------
+
+@main.command()
+@click.argument("query")
+@_token_option
+@click.option("--limit", "-n", default=10, show_default=True, type=int, help="Max results.")
+def search(query: str, token: Optional[str], limit: int) -> None:
+    """Search Hugging Face models by QUERY."""
+    from opendrop.core.resolver import search_models
+
+    try:
+        results = search_models(query, limit=limit, token=token)
+    except Exception as exc:
+        console.print(f"[red]Search failed:[/red] {exc}")
+        sys.exit(1)
+
+    if not results:
+        console.print(f"[dim]No models found for '{query}'.[/dim]")
+        return
+
+    table = Table(title=f"Search Results: {query}", show_header=True, header_style="bold cyan")
+    table.add_column("Model ID", style="bold")
+    table.add_column("Task")
+    table.add_column("Downloads", justify="right")
+    table.add_column("Likes", justify="right")
+    table.add_column("License")
+    table.add_column("Updated")
+
+    for item in results:
+        table.add_row(
+            item.model_id,
+            item.pipeline_tag or "—",
+            f"{item.downloads:,}",
+            f"{item.likes:,}",
+            item.license_id or "—",
+            item.last_modified.split("T", 1)[0] if item.last_modified else "—",
+        )
+
+    console.print(table)
 
 
 # ---------------------------------------------------------------------------
@@ -133,9 +189,8 @@ def run(model_id: str, port: Optional[int], ctx: Optional[int], no_flash_attn: b
             f"  OpenAI base URL: http://127.0.0.1:{p}/v1\n"
             "  Press Ctrl-C to stop."
         )
-        # Block until interrupted
-        import signal
-        signal.pause()
+        # Block until interrupted (cross-platform).
+        threading.Event().wait()
     except KeyboardInterrupt:
         pass
     finally:
@@ -155,7 +210,7 @@ def run(model_id: str, port: Optional[int], ctx: Optional[int], no_flash_attn: b
 def serve(host: Optional[str], port: Optional[int], reload: bool) -> None:
     """Start the multi-model OpenAI-compatible API server (with Web UI)."""
     from opendrop.config import get_config
-    from opendrop.inference.server import create_app, run_server
+    from opendrop.inference.server import create_app
     from opendrop.ui.web import mount_web_ui
     import uvicorn
 
@@ -460,7 +515,7 @@ def hardware(quant_for: Optional[str]) -> None:
 @main.command(name="config")
 def show_config() -> None:
     """Show the active configuration."""
-    from opendrop.config import get_config, load_config
+    from opendrop.config import get_config
     from platformdirs import user_config_dir
 
     config_path = Path(user_config_dir("opendrop")) / "config.toml"
@@ -476,6 +531,6 @@ def show_config() -> None:
     }
     for section_name, section in sections.items():
         console.print(f"[bold cyan][{section_name}][/bold cyan]")
-        for k, v in section._data.items():
+        for k, v in _section_values(section).items():
             console.print(f"  {k} = {v!r}")
         console.print()
