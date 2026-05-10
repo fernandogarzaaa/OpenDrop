@@ -49,6 +49,7 @@ def _quant_option(f):
 
 
 def _section_values(section: object) -> dict:
+    """Return a printable key/value mapping from a config section object."""
     values = asdict(section) if is_dataclass(section) else vars(section)
     if "_data" in values and isinstance(values["_data"], dict):
         return values["_data"]
