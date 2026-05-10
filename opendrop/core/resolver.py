@@ -67,19 +67,19 @@ class ModelSpec:
     """Everything OpenDrop knows about a model before downloading."""
 
     # Source
-    source_url: str           # original input
-    model_id: str             # "org/name"
+    source_url: str  # original input
+    model_id: str  # "org/name"
     is_local: bool = False
 
     # Metadata
-    model_name: str = ""      # display name
-    architecture: str = ""    # e.g. "llama", "mistral", "qwen2"
-    params_b: float = 0.0     # parameter count in billions
+    model_name: str = ""  # display name
+    architecture: str = ""  # e.g. "llama", "mistral", "qwen2"
+    params_b: float = 0.0  # parameter count in billions
     license_id: str = ""
     license_ok: bool = True
     license_warning: str = ""
     tags: list[str] = field(default_factory=list)
-    pipeline_tag: str = ""    # "text-generation", "fill-mask", …
+    pipeline_tag: str = ""  # "text-generation", "fill-mask", …
 
     # Download options
     variants: list[FileVariant] = field(default_factory=list)
@@ -118,6 +118,7 @@ class ModelSearchResult:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _parse_quant_from_filename(name: str) -> str:
     """Try to extract a quant label from a GGUF filename."""
@@ -209,6 +210,7 @@ def _params_from_name(name: str) -> float:
 # HuggingFace API fetch helpers (synchronous for CLI simplicity)
 # ---------------------------------------------------------------------------
 
+
 def _hf_model_info(model_id: str, token: str | None = None) -> dict:
     """Fetch model metadata from the HF API."""
     headers = {}
@@ -247,19 +249,22 @@ def _build_variants_from_tree(model_id: str, tree: list[dict]) -> list[FileVaria
         if not (is_gguf or is_safetensors):
             continue
         url = f"{HF_BASE}/{model_id}/resolve/main/{name}"
-        variants.append(FileVariant(
-            filename=name,
-            url=url,
-            size_bytes=size,
-            is_gguf=is_gguf,
-            quant_label=_parse_quant_from_filename(name) if is_gguf else "",
-        ))
+        variants.append(
+            FileVariant(
+                filename=name,
+                url=url,
+                size_bytes=size,
+                is_gguf=is_gguf,
+                quant_label=_parse_quant_from_filename(name) if is_gguf else "",
+            )
+        )
     return variants
 
 
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 def resolve(source: str, token: str | None = None) -> ModelSpec:
     """Resolve *source* (URL, HF model ID, or local path) to a :class:`ModelSpec`.
@@ -308,8 +313,7 @@ def resolve(source: str, token: str | None = None) -> ModelSpec:
             "or a local file/directory path."
         )
 
-    spec = ModelSpec(source_url=source, model_id=model_id,
-                     model_name=model_id.split("/")[-1])
+    spec = ModelSpec(source_url=source, model_id=model_id, model_name=model_id.split("/")[-1])
     _enrich_from_hf(spec, model_id, token)
     return spec
 
@@ -407,8 +411,11 @@ def _enrich_from_hf(spec: ModelSpec, model_id: str, token: str | None) -> None:
         if not spec.params_b:
             # Try safetensors_info
             si = info.get("safetensors") or {}
-            total = sum(si.get("total", {}).values() if isinstance(si.get("total"), dict)
-                        else [si.get("total", 0)])
+            total = sum(
+                si.get("total", {}).values()
+                if isinstance(si.get("total"), dict)
+                else [si.get("total", 0)]
+            )
             if total:
                 spec.params_b = total / 1e9
 

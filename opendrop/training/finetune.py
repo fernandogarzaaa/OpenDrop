@@ -33,16 +33,24 @@ console = Console()
 # Config
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class TrainingConfig:
-    method: str = "lora"              # lora | qlora | full | mlx
+    method: str = "lora"  # lora | qlora | full | mlx
     lora_rank: int = 16
     lora_alpha: int = 32
     lora_dropout: float = 0.05
-    target_modules: list[str] = field(default_factory=lambda: [
-        "q_proj", "k_proj", "v_proj", "o_proj",
-        "gate_proj", "up_proj", "down_proj",
-    ])
+    target_modules: list[str] = field(
+        default_factory=lambda: [
+            "q_proj",
+            "k_proj",
+            "v_proj",
+            "o_proj",
+            "gate_proj",
+            "up_proj",
+            "down_proj",
+        ]
+    )
     learning_rate: float = 2e-4
     num_epochs: int = 3
     batch_size: int = 4
@@ -53,7 +61,7 @@ class TrainingConfig:
     bf16: bool = False
     save_steps: int = 100
     logging_steps: int = 10
-    output_quant: str = "Q4_K_M"      # Quant for merged GGUF output
+    output_quant: str = "Q4_K_M"  # Quant for merged GGUF output
 
 
 @dataclass
@@ -70,13 +78,12 @@ class TrainingResult:
 # Dependency checks
 # ---------------------------------------------------------------------------
 
+
 def _require_torch() -> None:
     try:
         import torch  # noqa: F401
     except ImportError as exc:
-        raise RuntimeError(
-            "PyTorch not installed. Run: pip install opendrop[training]"
-        ) from exc
+        raise RuntimeError("PyTorch not installed. Run: pip install opendrop[training]") from exc
 
 
 def _require_transformers() -> None:
@@ -92,23 +99,20 @@ def _require_peft() -> None:
     try:
         import peft  # noqa: F401
     except ImportError as exc:
-        raise RuntimeError(
-            "PEFT not installed. Run: pip install opendrop[training]"
-        ) from exc
+        raise RuntimeError("PEFT not installed. Run: pip install opendrop[training]") from exc
 
 
 def _require_mlx() -> None:
     try:
         import mlx  # noqa: F401
     except ImportError as exc:
-        raise RuntimeError(
-            "MLX not installed. Run: pip install opendrop[training-apple]"
-        ) from exc
+        raise RuntimeError("MLX not installed. Run: pip install opendrop[training-apple]") from exc
 
 
 # ---------------------------------------------------------------------------
 # LoRA / QLoRA training (CUDA / CPU path)
 # ---------------------------------------------------------------------------
+
 
 def _train_lora_peft(
     model_id: str,
@@ -130,6 +134,7 @@ def _train_lora_peft(
 
     try:
         from trl import SFTTrainer  # type: ignore[import]
+
         has_trl = True
     except ImportError:
         has_trl = False
@@ -144,6 +149,7 @@ def _train_lora_peft(
     if use_qlora:
         try:
             from transformers import BitsAndBytesConfig  # type: ignore
+
             quant_cfg = BitsAndBytesConfig(
                 load_in_4bit=True,
                 bnb_4bit_use_double_quant=True,
@@ -207,6 +213,7 @@ def _train_lora_peft(
         )
     else:
         from transformers import DataCollatorForLanguageModeling, Trainer  # type: ignore
+
         tokenized = hf_ds.map(
             lambda x: tok(x["text"], truncation=True, max_length=cfg.max_seq_length),
             batched=True,
@@ -234,6 +241,7 @@ def _train_lora_peft(
 # ---------------------------------------------------------------------------
 # MLX fine-tuning (Apple Silicon)
 # ---------------------------------------------------------------------------
+
 
 def _train_mlx(
     model_id: str,
@@ -263,15 +271,24 @@ def _train_mlx(
     adapter_dir.mkdir(parents=True, exist_ok=True)
 
     cmd = [
-        sys.executable, "-m", "mlx_lm.lora",
-        "--model", model_id,
+        sys.executable,
+        "-m",
+        "mlx_lm.lora",
+        "--model",
+        model_id,
         "--train",
-        "--data", str(data_file),
-        "--adapter-path", str(adapter_dir),
-        "--num-layers", str(cfg.lora_rank),
-        "--iters", str(cfg.num_epochs * len(data) // cfg.batch_size),
-        "--batch-size", str(cfg.batch_size),
-        "--learning-rate", str(cfg.learning_rate),
+        "--data",
+        str(data_file),
+        "--adapter-path",
+        str(adapter_dir),
+        "--num-layers",
+        str(cfg.lora_rank),
+        "--iters",
+        str(cfg.num_epochs * len(data) // cfg.batch_size),
+        "--batch-size",
+        str(cfg.batch_size),
+        "--learning-rate",
+        str(cfg.learning_rate),
     ]
     if token:
         env = os.environ.copy()
@@ -291,6 +308,7 @@ def _train_mlx(
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 def fine_tune(
     model_id: str,
@@ -358,8 +376,11 @@ def fine_tune(
         if tok.pad_token is None:
             tok.pad_token = tok.eos_token
         model = AutoModelForCausalLM.from_pretrained(
-            model_id, token=token, trust_remote_code=True,
-            torch_dtype=torch.float16, device_map="auto",
+            model_id,
+            token=token,
+            trust_remote_code=True,
+            torch_dtype=torch.float16,
+            device_map="auto",
         )
         texts = [
             format_sample_for_training(s, tok)
@@ -398,8 +419,9 @@ def fine_tune(
         adapter_dir = merged_model_dir
 
     else:
-        raise ValueError(f"Unknown training method: '{cfg.method}'. "
-                         "Choose from: lora, qlora, full, mlx")
+        raise ValueError(
+            f"Unknown training method: '{cfg.method}'. Choose from: lora, qlora, full, mlx"
+        )
 
     # --- Produce GGUF -------------------------------------------------------
     if produce_gguf and adapter_dir and cfg.method != "mlx":

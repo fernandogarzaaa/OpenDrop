@@ -15,26 +15,26 @@ from opendrop.core.hardware import HardwareProfile
 class QuantSpec:
     """Describes a quantization choice."""
 
-    name: str           # e.g. "Q4_K_M"
-    bits: float         # effective bits per weight
-    quality: str        # "excellent" / "good" / "fair" / "poor"
+    name: str  # e.g. "Q4_K_M"
+    bits: float  # effective bits per weight
+    quality: str  # "excellent" / "good" / "fair" / "poor"
     description: str
 
 
 # Ordered from highest to lowest quality.
 # bytes_per_param = bits / 8.
 _QUANT_TABLE: list[QuantSpec] = [
-    QuantSpec("fp16",    16.0, "excellent",  "Half precision, lossless"),
-    QuantSpec("Q8_0",     8.5, "excellent",  "8-bit, near-lossless"),
-    QuantSpec("Q6_K",     6.6, "excellent",  "6-bit K-quant"),
-    QuantSpec("Q5_K_M",   5.7, "good",       "5-bit K-quant (medium)"),
-    QuantSpec("Q5_K_S",   5.5, "good",       "5-bit K-quant (small)"),
-    QuantSpec("Q4_K_M",   4.8, "good",       "4-bit K-quant (medium) — recommended default"),
-    QuantSpec("Q4_K_S",   4.6, "good",       "4-bit K-quant (small)"),
-    QuantSpec("Q3_K_M",   3.9, "fair",       "3-bit K-quant (medium)"),
-    QuantSpec("Q3_K_S",   3.5, "fair",       "3-bit K-quant (small)"),
-    QuantSpec("Q2_K",     2.6, "poor",       "2-bit K-quant — use only when forced"),
-    QuantSpec("IQ2_XXS",  2.1, "poor",       "2-bit IQ quant (extreme small) — MoE experts only"),
+    QuantSpec("fp16", 16.0, "excellent", "Half precision, lossless"),
+    QuantSpec("Q8_0", 8.5, "excellent", "8-bit, near-lossless"),
+    QuantSpec("Q6_K", 6.6, "excellent", "6-bit K-quant"),
+    QuantSpec("Q5_K_M", 5.7, "good", "5-bit K-quant (medium)"),
+    QuantSpec("Q5_K_S", 5.5, "good", "5-bit K-quant (small)"),
+    QuantSpec("Q4_K_M", 4.8, "good", "4-bit K-quant (medium) — recommended default"),
+    QuantSpec("Q4_K_S", 4.6, "good", "4-bit K-quant (small)"),
+    QuantSpec("Q3_K_M", 3.9, "fair", "3-bit K-quant (medium)"),
+    QuantSpec("Q3_K_S", 3.5, "fair", "3-bit K-quant (small)"),
+    QuantSpec("Q2_K", 2.6, "poor", "2-bit K-quant — use only when forced"),
+    QuantSpec("IQ2_XXS", 2.1, "poor", "2-bit IQ quant (extreme small) — MoE experts only"),
 ]
 
 # Map quant name → spec for fast lookup

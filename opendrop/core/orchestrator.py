@@ -91,10 +91,7 @@ class Orchestrator:
         if spec.license_warning:
             console.print(f"[yellow]⚠ License: {spec.license_warning}[/yellow]")
 
-        console.print(
-            f"  Model  : [cyan]{spec.model_name}[/cyan]"
-            f"  ({spec.params_b:.1f}B params)"
-        )
+        console.print(f"  Model  : [cyan]{spec.model_name}[/cyan]  ({spec.params_b:.1f}B params)")
         if spec.architecture:
             console.print(f"  Arch   : {spec.architecture}")
         if spec.pipeline_tag:
@@ -110,9 +107,7 @@ class Orchestrator:
         # --- Check if already registered -------------------------------------
         existing = self._find_existing(spec, quant_spec)
         if existing and not force:
-            console.print(
-                f"[green]✓ Already in registry:[/green] {existing.display_name}"
-            )
+            console.print(f"[green]✓ Already in registry:[/green] {existing.display_name}")
             return existing
 
         # --- Download / convert -----------------------------------------------
@@ -131,9 +126,7 @@ class Orchestrator:
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _find_existing(
-        self, spec: ModelSpec, quant: QuantSpec
-    ) -> ModelRecord | None:
+    def _find_existing(self, spec: ModelSpec, quant: QuantSpec) -> ModelRecord | None:
         for rec in self._registry.list_models():
             if rec.model_id == spec.model_id and rec.quant == quant.name:
                 if Path(rec.path).exists():
@@ -184,9 +177,12 @@ class Orchestrator:
         for v in safetensors:
             download(v.url, dest_dir / "src", filename=v.filename, token=token)
         # Also grab config files
-        config_files = [v for v in spec.variants
-                        if v.filename in ("config.json", "tokenizer.json",
-                                          "tokenizer_config.json", "tokenizer.model")]
+        config_files = [
+            v
+            for v in spec.variants
+            if v.filename
+            in ("config.json", "tokenizer.json", "tokenizer_config.json", "tokenizer.model")
+        ]
         for v in config_files:
             download(v.url, dest_dir / "src", filename=v.filename, token=token)
 
@@ -203,9 +199,7 @@ class Orchestrator:
             return min(labelled, key=lambda v: v.size_bytes)
         return variants[0]
 
-    def _register(
-        self, spec: ModelSpec, quant: QuantSpec, gguf_path: Path
-    ) -> ModelRecord:
+    def _register(self, spec: ModelSpec, quant: QuantSpec, gguf_path: Path) -> ModelRecord:
         display = f"{spec.model_name}-{quant.name}".lower()
         rec_id = _unique_id(display)
         # Ensure unique display name

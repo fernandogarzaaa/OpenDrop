@@ -110,8 +110,7 @@ def create_app(
         if not rec:
             raise HTTPException(
                 status_code=404,
-                detail=f"Model '{model_id}' not found. "
-                       "Run `opendrop pull <url>` first.",
+                detail=f"Model '{model_id}' not found. Run `opendrop pull <url>` first.",
             )
         if not Path(rec.path).exists():
             raise HTTPException(
@@ -210,6 +209,7 @@ def create_app(
 # ---------------------------------------------------------------------------
 # Dev entry point
 # ---------------------------------------------------------------------------
+
 
 def run_server(
     host: str = "127.0.0.1",

@@ -33,16 +33,22 @@ console = Console()
 # Shared options
 # ---------------------------------------------------------------------------
 
+
 def _token_option(f):
     return click.option(
-        "--token", "-t", envvar="HF_TOKEN", default=None,
+        "--token",
+        "-t",
+        envvar="HF_TOKEN",
+        default=None,
         help="HuggingFace access token (also read from HF_TOKEN env var).",
     )(f)
 
 
 def _quant_option(f):
     return click.option(
-        "--quant", "-q", default=None,
+        "--quant",
+        "-q",
+        default=None,
         help="Force a specific quantization (e.g. Q4_K_M). Auto-detected if omitted.",
     )(f)
 
@@ -61,6 +67,7 @@ def _section_values(section: object) -> dict:
 # Main group
 # ---------------------------------------------------------------------------
 
+
 @click.group()
 @click.version_option(package_name="opendrop")
 def main() -> None:
@@ -70,6 +77,7 @@ def main() -> None:
 # ---------------------------------------------------------------------------
 # pull
 # ---------------------------------------------------------------------------
+
 
 @main.command()
 @click.argument("source")
@@ -91,6 +99,7 @@ def pull(source: str, token: str | None, quant: str | None, force: bool) -> None
 # ---------------------------------------------------------------------------
 # search
 # ---------------------------------------------------------------------------
+
 
 @main.command()
 @click.argument("query")
@@ -135,12 +144,17 @@ def search(query: str, token: str | None, limit: int) -> None:
 # run
 # ---------------------------------------------------------------------------
 
+
 @main.command()
 @click.argument("model_id")
-@click.option("--port", "-p", default=None, type=int,
-              help="Port to serve on (default: auto-allocated 11401+).")
-@click.option("--ctx", default=None, type=int,
-              help="Context size (default: from config).")
+@click.option(
+    "--port",
+    "-p",
+    default=None,
+    type=int,
+    help="Port to serve on (default: auto-allocated 11401+).",
+)
+@click.option("--ctx", default=None, type=int, help="Context size (default: from config).")
 @click.option("--no-flash-attn", is_flag=True, help="Disable flash attention.")
 def run(model_id: str, port: int | None, ctx: int | None, no_flash_attn: bool) -> None:
     """Start the inference server for MODEL_ID and block."""
@@ -204,6 +218,7 @@ def run(model_id: str, port: int | None, ctx: int | None, no_flash_attn: bool) -
 # serve  (multi-model OpenAI proxy)
 # ---------------------------------------------------------------------------
 
+
 @main.command()
 @click.option("--host", default=None, help="Bind host (default: from config).")
 @click.option("--port", "-p", default=None, type=int, help="Bind port (default: 11400).")
@@ -233,6 +248,7 @@ def serve(host: str | None, port: int | None, reload: bool) -> None:
 # ---------------------------------------------------------------------------
 # list
 # ---------------------------------------------------------------------------
+
 
 @main.command(name="list")
 def list_models() -> None:
@@ -281,6 +297,7 @@ def list_models() -> None:
 # info
 # ---------------------------------------------------------------------------
 
+
 @main.command()
 @click.argument("model_id")
 def info(model_id: str) -> None:
@@ -301,22 +318,22 @@ def info(model_id: str) -> None:
     table.add_column("Value")
 
     for k, v in {
-        "ID":          rec.id,
-        "Name":        rec.display_name,
-        "Model ID":    rec.model_id,
-        "Source":      rec.source_url,
+        "ID": rec.id,
+        "Name": rec.display_name,
+        "Model ID": rec.model_id,
+        "Source": rec.source_url,
         "Architecture": rec.architecture or "—",
-        "Parameters":  f"{rec.params_b:.2f}B" if rec.params_b else "—",
+        "Parameters": f"{rec.params_b:.2f}B" if rec.params_b else "—",
         "Quantization": rec.quant,
-        "Format":      rec.format,
-        "Size":        rec.size_human(),
-        "Path":        rec.path,
-        "License":     rec.license_id or "—",
-        "Pipeline":    rec.pipeline_tag or "—",
-        "Tags":        ", ".join(rec.tags[:10]) if rec.tags else "—",
-        "Added":       rec.added_at,
-        "Last used":   rec.last_used or "never",
-        "Port":        str(rec.server_port) if rec.server_port else "—",
+        "Format": rec.format,
+        "Size": rec.size_human(),
+        "Path": rec.path,
+        "License": rec.license_id or "—",
+        "Pipeline": rec.pipeline_tag or "—",
+        "Tags": ", ".join(rec.tags[:10]) if rec.tags else "—",
+        "Added": rec.added_at,
+        "Last used": rec.last_used or "never",
+        "Port": str(rec.server_port) if rec.server_port else "—",
     }.items():
         table.add_row(k, str(v))
 
@@ -335,6 +352,7 @@ def info(model_id: str) -> None:
 # ---------------------------------------------------------------------------
 # rm
 # ---------------------------------------------------------------------------
+
 
 @main.command()
 @click.argument("model_id")
@@ -357,19 +375,29 @@ def rm(model_id: str, keep_files: bool) -> None:
 # fine-tune
 # ---------------------------------------------------------------------------
 
+
 @main.command(name="fine-tune")
 @click.argument("model_id")
-@click.option("--data", "-d", required=True,
-              help="Dataset file (JSONL/CSV/TXT) or HuggingFace dataset ID.")
-@click.option("--method", "-m", default="lora",
-              type=click.Choice(["lora", "qlora", "full", "mlx"]),
-              help="Training method (default: lora).")
+@click.option(
+    "--data", "-d", required=True, help="Dataset file (JSONL/CSV/TXT) or HuggingFace dataset ID."
+)
+@click.option(
+    "--method",
+    "-m",
+    default="lora",
+    type=click.Choice(["lora", "qlora", "full", "mlx"]),
+    help="Training method (default: lora).",
+)
 @click.option("--epochs", "-e", default=3, show_default=True, type=int)
 @click.option("--rank", default=16, show_default=True, type=int, help="LoRA rank.")
 @click.option("--lr", default=2e-4, show_default=True, type=float, help="Learning rate.")
 @click.option("--batch-size", default=4, show_default=True, type=int)
-@click.option("--output", "-o", default=None,
-              help="Output directory (default: ~/.local/share/opendrop/adapters/<model>/).")
+@click.option(
+    "--output",
+    "-o",
+    default=None,
+    help="Output directory (default: ~/.local/share/opendrop/adapters/<model>/).",
+)
 @_token_option
 @click.option("--no-gguf", is_flag=True, help="Skip GGUF conversion after training.")
 def fine_tune(
@@ -439,11 +467,13 @@ def fine_tune(
 # convert
 # ---------------------------------------------------------------------------
 
+
 @main.command()
 @click.argument("model_path")
 @_quant_option
-@click.option("--output", "-o", default=None,
-              help="Output directory (default: <model_path>/../gguf/).")
+@click.option(
+    "--output", "-o", default=None, help="Output directory (default: <model_path>/../gguf/)."
+)
 @click.option("--keep-fp16", is_flag=True, help="Keep the intermediate fp16 GGUF.")
 def convert(model_path: str, quant: str | None, output: str | None, keep_fp16: bool) -> None:
     """Convert a local SafeTensors model to GGUF.
@@ -455,9 +485,7 @@ def convert(model_path: str, quant: str | None, output: str | None, keep_fp16: b
 
     src = Path(model_path).expanduser().resolve()
     if not needs_conversion(src):
-        console.print(
-            "[yellow]Path does not appear to be a SafeTensors directory.[/yellow]"
-        )
+        console.print("[yellow]Path does not appear to be a SafeTensors directory.[/yellow]")
 
     out_dir = Path(output) if output else src.parent / "gguf"
     q = quant or "Q4_K_M"
@@ -479,10 +507,12 @@ def convert(model_path: str, quant: str | None, output: str | None, keep_fp16: b
 # tui
 # ---------------------------------------------------------------------------
 
+
 @main.command()
 def tui() -> None:
     """Launch the Textual terminal dashboard."""
     from opendrop.ui.tui import run_tui
+
     run_tui()
 
 
@@ -490,9 +520,14 @@ def tui() -> None:
 # hardware
 # ---------------------------------------------------------------------------
 
+
 @main.command()
-@click.option("--quant-for", default=None, metavar="PARAMS_B",
-              help="Show quantization options for a model of this size (e.g. 8 for 8B).")
+@click.option(
+    "--quant-for",
+    default=None,
+    metavar="PARAMS_B",
+    help="Show quantization options for a model of this size (e.g. 8 for 8B).",
+)
 def hardware(quant_for: str | None) -> None:
     """Show the detected hardware profile."""
     from opendrop.core.hardware import detect_hardware
@@ -513,6 +548,7 @@ def hardware(quant_for: str | None) -> None:
 # ---------------------------------------------------------------------------
 # config
 # ---------------------------------------------------------------------------
+
 
 @main.command(name="config")
 def show_config() -> None:

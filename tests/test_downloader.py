@@ -18,9 +18,10 @@ from opendrop.core.downloader import (
 
 class TestFilenameFromUrl:
     def test_simple_gguf(self):
-        assert _filename_from_url(
-            "https://huggingface.co/org/model/resolve/main/model.Q4_K_M.gguf"
-        ) == "model.Q4_K_M.gguf"
+        assert (
+            _filename_from_url("https://huggingface.co/org/model/resolve/main/model.Q4_K_M.gguf")
+            == "model.Q4_K_M.gguf"
+        )
 
     def test_with_query_string(self):
         name = _filename_from_url("https://example.com/file.bin?token=abc")

@@ -23,6 +23,7 @@ from opendrop.training.dataset import (
 # Normalizer unit tests
 # ---------------------------------------------------------------------------
 
+
 class TestNormalizers:
     def test_alpaca_detection(self):
         sample = {"instruction": "Translate", "output": "Translated"}
@@ -70,6 +71,7 @@ class TestNormalizers:
 # File loaders
 # ---------------------------------------------------------------------------
 
+
 class TestLoadJSONL:
     def test_load_alpaca_jsonl(self, tmp_path: Path):
         data = [
@@ -84,10 +86,12 @@ class TestLoadJSONL:
 
     def test_load_sharegpt_jsonl(self, tmp_path: Path):
         data = [
-            {"conversations": [
-                {"from": "human", "value": "Hi"},
-                {"from": "gpt", "value": "Hello"},
-            ]}
+            {
+                "conversations": [
+                    {"from": "human", "value": "Hi"},
+                    {"from": "gpt", "value": "Hello"},
+                ]
+            }
         ]
         f = tmp_path / "data.jsonl"
         f.write_text(json.dumps(data[0]))
@@ -154,9 +158,15 @@ class TestLoadText:
 
 class TestDatasetStats:
     def test_stats_all_chat(self, tmp_path: Path):
-        data = [{"messages": [{"role": "user", "content": "Hi"},
-                               {"role": "assistant", "content": "Hello"}]}
-                for _ in range(5)]
+        data = [
+            {
+                "messages": [
+                    {"role": "user", "content": "Hi"},
+                    {"role": "assistant", "content": "Hello"},
+                ]
+            }
+            for _ in range(5)
+        ]
         stats = dataset_stats(data)
         assert stats["total"] == 5
         assert stats["chat_format"] == 5
