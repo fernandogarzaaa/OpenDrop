@@ -28,6 +28,7 @@ from rich.console import Console
 from rich.table import Table
 
 console = Console()
+RUN_BLOCK_WAIT_SECONDS = 3600
 
 
 # ---------------------------------------------------------------------------
@@ -182,7 +183,7 @@ def run(model_id: str, port: Optional[int], ctx: Optional[int], no_flash_attn: b
         # Block until interrupted (cross-platform).
         stop_event = threading.Event()
         while True:
-            stop_event.wait(timeout=3600)
+            stop_event.wait(timeout=RUN_BLOCK_WAIT_SECONDS)
     except KeyboardInterrupt:
         pass
     finally:
