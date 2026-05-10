@@ -327,8 +327,6 @@ def fine_tune(
     adapter_dir: Optional[Path] = None
     merged_gguf: Optional[Path] = None
     final_loss: float = 0.0
-    gguf_attempted = False
-    gguf_failed = False
 
     # --- MLX ----------------------------------------------------------------
     if cfg.method == "mlx":
@@ -398,7 +396,6 @@ def fine_tune(
 
     # --- Produce GGUF -------------------------------------------------------
     if produce_gguf and adapter_dir and cfg.method != "mlx":
-        gguf_attempted = True
         try:
             console.print("[bold]Converting fine-tuned model → GGUF …[/bold]")
             gguf_dir = output_dir / "gguf"
@@ -415,13 +412,13 @@ def fine_tune(
             elif cfg.method == "full":
                 merged_gguf = convert_and_quantize(adapter_dir, gguf_dir, cfg.output_quant)
         except Exception as exc:
-            gguf_failed = True
             console.print(f"[yellow]⚠ GGUF conversion failed: {exc}[/yellow]")
             console.print("[dim]The adapter is still usable directly.[/dim]")
-    if gguf_attempted and not gguf_failed and merged_gguf is None:
-        console.print(
-            "[yellow]⚠ GGUF step completed but no .gguf output file was found.[/yellow]"
-        )
+        else:
+            if merged_gguf is None:
+                console.print(
+                    "[yellow]⚠ GGUF step completed but no .gguf output file was found.[/yellow]"
+                )
 
     return TrainingResult(
         adapter_dir=adapter_dir,
