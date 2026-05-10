@@ -2,24 +2,22 @@
 
 from __future__ import annotations
 
-import json
 import csv
+import json
 from pathlib import Path
 
 import pytest
 
 from opendrop.training.dataset import (
     DatasetError,
-    dataset_stats,
-    load_dataset,
-    _normalize_alpaca,
-    _normalize_sharegpt,
-    _normalize_prompt_completion,
     _is_alpaca,
     _is_sharegpt,
-    _is_messages,
+    _normalize_alpaca,
+    _normalize_prompt_completion,
+    _normalize_sharegpt,
+    dataset_stats,
+    load_dataset,
 )
-
 
 # ---------------------------------------------------------------------------
 # Normalizer unit tests

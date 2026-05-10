@@ -16,7 +16,6 @@ import subprocess
 import threading
 import time
 from pathlib import Path
-from typing import Optional
 
 from rich.console import Console
 
@@ -37,7 +36,7 @@ _COMMON_DIRS = [
 ]
 
 
-def find_binary(names: list[str]) -> Optional[Path]:
+def find_binary(names: list[str]) -> Path | None:
     """Search PATH and common directories for one of the given binary names."""
     for name in names:
         found = shutil.which(name)
@@ -51,11 +50,11 @@ def find_binary(names: list[str]) -> Optional[Path]:
     return None
 
 
-def find_server_binary() -> Optional[Path]:
+def find_server_binary() -> Path | None:
     return find_binary(_SERVER_NAMES)
 
 
-def find_quantize_binary() -> Optional[Path]:
+def find_quantize_binary() -> Path | None:
     return find_binary(_QUANTIZE_NAMES)
 
 
@@ -115,8 +114,8 @@ class LlamaCppServer:
         gpu_layers: int = -1,
         parallel: int = 1,
         flash_attn: bool = True,
-        extra_args: Optional[list[str]] = None,
-        binary: Optional[Path] = None,
+        extra_args: list[str] | None = None,
+        binary: Path | None = None,
     ) -> None:
         self.gguf_path = gguf_path
         self.port = port
@@ -126,8 +125,8 @@ class LlamaCppServer:
         self.flash_attn = flash_attn
         self.extra_args = extra_args or []
         self._binary = binary or require_server_binary()
-        self._proc: Optional[subprocess.Popen] = None
-        self._log_thread: Optional[threading.Thread] = None
+        self._proc: subprocess.Popen | None = None
+        self._log_thread: threading.Thread | None = None
 
     def _build_cmd(self) -> list[str]:
         cmd = [
@@ -232,7 +231,7 @@ class ServerManager:
         gpu_layers: int = -1,
         parallel: int = 1,
         flash_attn: bool = True,
-        port: Optional[int] = None,
+        port: int | None = None,
     ) -> LlamaCppServer:
         with self._lock:
             if model_record_id in self._servers:
@@ -266,7 +265,7 @@ class ServerManager:
                 srv.stop()
             self._servers.clear()
 
-    def get_server(self, model_record_id: str) -> Optional[LlamaCppServer]:
+    def get_server(self, model_record_id: str) -> LlamaCppServer | None:
         return self._servers.get(model_record_id)
 
     def running_models(self) -> dict[str, LlamaCppServer]:

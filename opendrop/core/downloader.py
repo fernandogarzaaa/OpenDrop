@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import hashlib
 import threading
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, Optional
 from urllib.parse import unquote, urlparse
 
 import httpx
@@ -41,7 +41,7 @@ def _filename_from_url(url: str) -> str:
     return name or "model.bin"
 
 
-def _file_sha256(path: Path, progress_cb: Optional[Callable[[int], None]] = None) -> str:
+def _file_sha256(path: Path, progress_cb: Callable[[int], None] | None = None) -> str:
     h = hashlib.sha256()
     with open(path, "rb") as f:
         while True:
@@ -61,9 +61,9 @@ class DownloadError(RuntimeError):
 def download(
     url: str,
     dest_dir: Path,
-    filename: Optional[str] = None,
-    expected_sha256: Optional[str] = None,
-    token: Optional[str] = None,
+    filename: str | None = None,
+    expected_sha256: str | None = None,
+    token: str | None = None,
     force: bool = False,
     show_progress: bool = True,
 ) -> Path:
@@ -162,7 +162,7 @@ def download_repo_files(
     model_id: str,
     filenames: list[str],
     dest_dir: Path,
-    token: Optional[str] = None,
+    token: str | None = None,
     show_progress: bool = True,
 ) -> list[Path]:
     """Download multiple files from a HuggingFace repo.

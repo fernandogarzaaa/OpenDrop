@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-import pytest
 from datetime import datetime, timezone
 from pathlib import Path
+
+import pytest
 
 from opendrop.core.registry import AdapterRecord, ModelRecord, Registry
 

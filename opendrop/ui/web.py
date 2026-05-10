@@ -62,7 +62,8 @@ _WEB_UI = """<!DOCTYPE html>
   #chat-header .hw-badge { margin-left: auto; font-size: .75rem; color: var(--dim);
                            background: var(--surface); padding: 4px 10px;
                            border-radius: 99px; border: 1px solid var(--border); }
-  #messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+  #messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column;
+              gap: 16px; }
   .msg { max-width: 75%; padding: 12px 16px; border-radius: var(--radius); line-height: 1.5; }
   .msg.user { align-self: flex-end; background: var(--accent); color: #fff; }
   .msg.assistant { align-self: flex-start; background: var(--surface);
@@ -85,7 +86,8 @@ _WEB_UI = """<!DOCTYPE html>
   #settings .setting-row { display: flex; justify-content: space-between; align-items: center; }
   /* Spinner */
   .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--dim);
-             border-top-color: var(--accent); border-radius: 50%; animation: spin .6s linear infinite; }
+             border-top-color: var(--accent); border-radius: 50%;
+             animation: spin .6s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
   /* Notifications */
   #toast { position: fixed; bottom: 20px; right: 20px; background: var(--surface);
@@ -166,7 +168,8 @@ async function loadModels() {
 function renderModels(models) {
   const el = document.getElementById('model-list');
   if (!models.length) {
-    el.innerHTML = '<div style="color:var(--dim);font-size:.8rem">No models yet. Pull one above.</div>';
+    el.innerHTML = '<div style="color:var(--dim);font-size:.8rem">'
+                 + 'No models yet. Pull one above.</div>';
     return;
   }
   el.innerHTML = models.map(m => `

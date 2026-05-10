@@ -6,15 +6,13 @@ Uses aiosqlite for async access from the server and sync wrappers for CLI.
 
 from __future__ import annotations
 
-import asyncio
 import json
 import sqlite3
+from collections.abc import AsyncIterator, Iterator
 from contextlib import asynccontextmanager, contextmanager
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import AsyncIterator, Iterator, Optional
-
 
 # ---------------------------------------------------------------------------
 # Schema
@@ -81,8 +79,8 @@ class ModelRecord:
     tags: list
     pipeline_tag: str
     added_at: str
-    last_used: Optional[str]
-    server_port: Optional[int]
+    last_used: str | None
+    server_port: int | None
     extra: dict
 
     def path_obj(self) -> Path:
@@ -174,7 +172,7 @@ class Registry:
                 ),
             )
 
-    def get_model(self, model_id: str) -> Optional[ModelRecord]:
+    def get_model(self, model_id: str) -> ModelRecord | None:
         """Lookup by short ID or display name."""
         with self._connect() as conn:
             row = conn.execute(
@@ -204,7 +202,7 @@ class Registry:
                 "UPDATE models SET last_used=? WHERE id=?", (_now(), model_id)
             )
 
-    def set_port(self, model_id: str, port: Optional[int]) -> None:
+    def set_port(self, model_id: str, port: int | None) -> None:
         with self._connect() as conn:
             conn.execute(
                 "UPDATE models SET server_port=? WHERE id=?", (port, model_id)
@@ -227,7 +225,7 @@ class Registry:
                 ),
             )
 
-    def list_adapters(self, model_id: Optional[str] = None) -> list[AdapterRecord]:
+    def list_adapters(self, model_id: str | None = None) -> list[AdapterRecord]:
         with self._connect() as conn:
             if model_id:
                 rows = conn.execute(
@@ -269,7 +267,7 @@ class AsyncRegistry:
             db.row_factory = aiosqlite.Row
             yield db
 
-    async def get_model(self, model_id: str) -> Optional[ModelRecord]:
+    async def get_model(self, model_id: str) -> ModelRecord | None:
         async with self._conn() as db:
             async with db.execute(
                 "SELECT * FROM models WHERE id=? OR display_name=?",

@@ -2,18 +2,14 @@
 
 from __future__ import annotations
 
-import platform
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import patch
 
 from opendrop.core.hardware import (
     GPUKind,
     HardwareProfile,
-    detect_hardware,
     _probe_apple_silicon,
     _probe_nvidia,
-    _probe_cpu_features,
+    detect_hardware,
 )
 
 

@@ -16,11 +16,9 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
 from urllib.parse import urlparse
 
 import httpx
-
 
 HF_API = "https://huggingface.co/api"
 HF_BASE = "https://huggingface.co"
@@ -86,10 +84,10 @@ class ModelSpec:
     # Download options
     variants: list[FileVariant] = field(default_factory=list)
     # Direct single-file download (set when URL points to a specific file)
-    direct_file: Optional[FileVariant] = None
+    direct_file: FileVariant | None = None
 
     # Local paths (set when source is local)
-    local_path: Optional[Path] = None
+    local_path: Path | None = None
 
     def best_gguf_variants(self) -> list[FileVariant]:
         """Return all GGUF variants, sorted by file size descending."""
@@ -163,7 +161,7 @@ def _is_hf_url(url: str) -> bool:
     return parsed.netloc in ("huggingface.co", "hf.co")
 
 
-def _extract_hf_model_id(url: str) -> Optional[str]:
+def _extract_hf_model_id(url: str) -> str | None:
     """Extract 'org/model' from a HF URL or return None."""
     parsed = urlparse(url)
     path = parsed.path.lstrip("/")
@@ -211,7 +209,7 @@ def _params_from_name(name: str) -> float:
 # HuggingFace API fetch helpers (synchronous for CLI simplicity)
 # ---------------------------------------------------------------------------
 
-def _hf_model_info(model_id: str, token: Optional[str] = None) -> dict:
+def _hf_model_info(model_id: str, token: str | None = None) -> dict:
     """Fetch model metadata from the HF API."""
     headers = {}
     if token:
@@ -223,7 +221,7 @@ def _hf_model_info(model_id: str, token: Optional[str] = None) -> dict:
         return r.json()
 
 
-def _hf_model_files(model_id: str, token: Optional[str] = None) -> list[dict]:
+def _hf_model_files(model_id: str, token: str | None = None) -> list[dict]:
     """Fetch the file listing for a HF model repo."""
     headers = {}
     if token:
@@ -263,7 +261,7 @@ def _build_variants_from_tree(model_id: str, tree: list[dict]) -> list[FileVaria
 # Public API
 # ---------------------------------------------------------------------------
 
-def resolve(source: str, token: Optional[str] = None) -> ModelSpec:
+def resolve(source: str, token: str | None = None) -> ModelSpec:
     """Resolve *source* (URL, HF model ID, or local path) to a :class:`ModelSpec`.
 
     Args:
@@ -319,7 +317,7 @@ def resolve(source: str, token: Optional[str] = None) -> ModelSpec:
 def search_models(
     query: str,
     limit: int = 10,
-    token: Optional[str] = None,
+    token: str | None = None,
 ) -> list[ModelSearchResult]:
     """Search Hugging Face models."""
     headers = {}
@@ -379,7 +377,7 @@ def _resolve_local(path: Path) -> ModelSpec:
     return spec
 
 
-def _enrich_from_hf(spec: ModelSpec, model_id: str, token: Optional[str]) -> None:
+def _enrich_from_hf(spec: ModelSpec, model_id: str, token: str | None) -> None:
     """Fetch HF metadata and file tree, populating spec in-place."""
     try:
         info = _hf_model_info(model_id, token)

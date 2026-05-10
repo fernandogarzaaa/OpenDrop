@@ -11,20 +11,17 @@ Launch: opendrop tui
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import ClassVar
 
 from rich.text import Text
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
-from textual.reactive import reactive
 from textual.widgets import (
     DataTable,
     Footer,
     Header,
     Label,
-    Log,
     RichLog,
     Static,
 )
@@ -33,7 +30,6 @@ from opendrop.config import get_config
 from opendrop.core.hardware import HardwareProfile, detect_hardware
 from opendrop.core.registry import ModelRecord, Registry
 from opendrop.inference.llamacpp import get_manager
-
 
 # ---------------------------------------------------------------------------
 # Hardware panel

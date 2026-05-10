@@ -16,12 +16,10 @@ from __future__ import annotations
 import json
 import os
 import platform
-import shutil
 import subprocess
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
 
 from rich.console import Console
 
@@ -60,8 +58,8 @@ class TrainingConfig:
 
 @dataclass
 class TrainingResult:
-    adapter_dir: Optional[Path]
-    merged_gguf: Optional[Path]
+    adapter_dir: Path | None
+    merged_gguf: Path | None
     method: str
     base_model_id: str
     epochs: int
@@ -118,7 +116,7 @@ def _train_lora_peft(
     cfg: TrainingConfig,
     output_dir: Path,
     use_qlora: bool = False,
-    token: Optional[str] = None,
+    token: str | None = None,
 ) -> tuple[Path, float]:
     """Run LoRA or QLoRA training via PEFT + TRL SFTTrainer."""
     _require_torch()
@@ -242,13 +240,13 @@ def _train_mlx(
     data: Dataset,
     cfg: TrainingConfig,
     output_dir: Path,
-    token: Optional[str] = None,
+    token: str | None = None,
 ) -> Path:
     """Run LoRA fine-tuning via mlx-lm (Apple Silicon only)."""
     _require_mlx()
 
     try:
-        import mlx_lm  # type: ignore[import]
+        import mlx_lm  # type: ignore[import]  # noqa: F401
     except ImportError as exc:
         raise RuntimeError(
             "mlx-lm not installed. Run: pip install opendrop[training-apple]"
@@ -298,8 +296,8 @@ def fine_tune(
     model_id: str,
     dataset_source: str,
     output_dir: Path,
-    cfg: Optional[TrainingConfig] = None,
-    token: Optional[str] = None,
+    cfg: TrainingConfig | None = None,
+    token: str | None = None,
     produce_gguf: bool = True,
 ) -> TrainingResult:
     """Run the full fine-tuning pipeline.
@@ -324,8 +322,8 @@ def fine_tune(
     data = load_dataset(dataset_source)
     console.print(f"  {len(data)} samples loaded.")
 
-    adapter_dir: Optional[Path] = None
-    merged_gguf: Optional[Path] = None
+    adapter_dir: Path | None = None
+    merged_gguf: Path | None = None
     final_loss: float = 0.0
 
     # --- MLX ----------------------------------------------------------------
@@ -346,9 +344,14 @@ def fine_tune(
         _require_torch()
         _require_transformers()
         import torch
-        from transformers import AutoModelForCausalLM, AutoTokenizer, Trainer, TrainingArguments  # type: ignore
         from datasets import Dataset as HFDataset  # type: ignore[import]
-        from transformers import DataCollatorForLanguageModeling  # type: ignore
+        from transformers import (  # type: ignore
+            AutoModelForCausalLM,
+            AutoTokenizer,
+            DataCollatorForLanguageModeling,  # type: ignore
+            Trainer,
+            TrainingArguments,
+        )
 
         console.print("[bold]Full fine-tune — loading model …[/bold]")
         tok = AutoTokenizer.from_pretrained(model_id, token=token, trust_remote_code=True)
@@ -358,7 +361,11 @@ def fine_tune(
             model_id, token=token, trust_remote_code=True,
             torch_dtype=torch.float16, device_map="auto",
         )
-        texts = [format_sample_for_training(s, tok) for s in data if format_sample_for_training(s, tok).strip()]
+        texts = [
+            format_sample_for_training(s, tok)
+            for s in data
+            if format_sample_for_training(s, tok).strip()
+        ]
         hf_ds = HFDataset.from_dict({"text": texts})
         train_args = TrainingArguments(
             output_dir=str(output_dir),
@@ -435,7 +442,7 @@ def _merge_lora_then_convert(
     adapter_dir: Path,
     gguf_dir: Path,
     quant: str,
-    token: Optional[str],
+    token: str | None,
 ) -> None:
     """Merge LoRA weights into base model, then convert to GGUF."""
     _require_transformers()

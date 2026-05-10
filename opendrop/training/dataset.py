@@ -17,8 +17,7 @@ from __future__ import annotations
 import csv
 import json
 from pathlib import Path
-from typing import Any, Optional
-
+from typing import Any
 
 # ---------------------------------------------------------------------------
 # Types
@@ -190,7 +189,7 @@ def _load_hf_dataset(dataset_id: str, split: str = "train") -> Dataset:
 def load_dataset(
     source: str,
     split: str = "train",
-    max_samples: Optional[int] = None,
+    max_samples: int | None = None,
 ) -> Dataset:
     """Load a dataset from *source* and return normalized samples.
 
