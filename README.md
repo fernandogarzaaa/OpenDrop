@@ -27,6 +27,9 @@ pip install opendrop             # production (PyPI, coming soon)
 # Pull a model from Hugging Face
 opendrop pull https://huggingface.co/bartowski/Meta-Llama-3.1-8B-Instruct-GGUF
 
+# Search models on Hugging Face
+opendrop search "llama 3.1 instruct"
+
 # Run it (starts an OpenAI-compatible server on :11400)
 opendrop run llama-3.1-8b-instruct
 
@@ -159,6 +162,7 @@ opendrop fine-tune my-model --data train.jsonl --method full
 
 ```
 opendrop pull <url>              Pull and prepare a model
+opendrop search <query>          Search models on Hugging Face
 opendrop run <model-id>         Start inference server for a model
 opendrop serve                  Serve all registered models
 opendrop list                   List all models in registry

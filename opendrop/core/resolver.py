@@ -105,6 +105,18 @@ class ModelSpec:
         )
 
 
+@dataclass
+class ModelSearchResult:
+    """A Hugging Face model search hit for CLI rendering."""
+
+    model_id: str
+    downloads: int = 0
+    likes: int = 0
+    pipeline_tag: str = ""
+    license_id: str = ""
+    last_modified: str = ""
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -302,6 +314,49 @@ def resolve(source: str, token: Optional[str] = None) -> ModelSpec:
                      model_name=model_id.split("/")[-1])
     _enrich_from_hf(spec, model_id, token)
     return spec
+
+
+def search_models(
+    query: str,
+    limit: int = 10,
+    token: Optional[str] = None,
+) -> list[ModelSearchResult]:
+    """Search Hugging Face models."""
+    headers = {}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    params = {"search": query, "limit": max(1, min(limit, 50))}
+
+    with httpx.Client(follow_redirects=True, timeout=30) as client:
+        r = client.get(f"{HF_API}/models", headers=headers, params=params)
+        r.raise_for_status()
+        payload = r.json()
+
+    results: list[ModelSearchResult] = []
+    for item in payload:
+        tags = item.get("tags") or []
+        license_id = ""
+        card = item.get("cardData")
+        if isinstance(card, dict):
+            license_id = card.get("license") or ""
+        if not license_id:
+            for tag in tags:
+                if isinstance(tag, str) and tag.startswith("license:"):
+                    license_id = tag.split(":", 1)[1]
+                    break
+
+        results.append(
+            ModelSearchResult(
+                model_id=item.get("id") or "",
+                downloads=int(item.get("downloads") or 0),
+                likes=int(item.get("likes") or 0),
+                pipeline_tag=item.get("pipeline_tag") or "",
+                license_id=license_id,
+                last_modified=item.get("lastModified") or "",
+            )
+        )
+
+    return [r for r in results if r.model_id]
 
 
 def _resolve_local(path: Path) -> ModelSpec:

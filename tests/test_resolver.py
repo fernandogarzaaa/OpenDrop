@@ -17,6 +17,7 @@ from opendrop.core.resolver import (
     _params_from_name,
     _parse_quant_from_filename,
     resolve,
+    search_models,
 )
 
 
@@ -150,3 +151,31 @@ class TestResolveHF:
     def test_invalid_source_raises(self):
         with pytest.raises(ValueError):
             resolve("not-a-url-or-path")
+
+
+class TestSearchModels:
+    @patch("opendrop.core.resolver.httpx.Client")
+    def test_search_models_parses_hits(self, mock_client):
+        mock_response = MagicMock()
+        mock_response.json.return_value = [
+            {
+                "id": "meta-llama/Meta-Llama-3-8B-Instruct",
+                "downloads": 1234,
+                "likes": 77,
+                "pipeline_tag": "text-generation",
+                "tags": ["license:llama3.1"],
+                "lastModified": "2026-01-01T00:00:00.000Z",
+            }
+        ]
+        mock_http = MagicMock()
+        mock_http.get.return_value = mock_response
+        mock_client.return_value.__enter__.return_value = mock_http
+
+        results = search_models("llama", limit=5)
+
+        assert len(results) == 1
+        assert results[0].model_id == "meta-llama/Meta-Llama-3-8B-Instruct"
+        assert results[0].downloads == 1234
+        assert results[0].likes == 77
+        assert results[0].pipeline_tag == "text-generation"
+        assert results[0].license_id == "llama3.1"
