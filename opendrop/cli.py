@@ -28,7 +28,7 @@ from rich.console import Console
 from rich.table import Table
 
 console = Console()
-RUN_BLOCK_WAIT_SECONDS = 3600
+RUN_BLOCK_POLL_SECONDS = 3600
 
 
 # ---------------------------------------------------------------------------
@@ -47,6 +47,13 @@ def _quant_option(f):
         "--quant", "-q", default=None,
         help="Force a specific quantization (e.g. Q4_K_M). Auto-detected if omitted.",
     )(f)
+
+
+def _section_values(section: object) -> dict:
+    values = asdict(section) if is_dataclass(section) else vars(section)
+    if "_data" in values and isinstance(values["_data"], dict):
+        return values["_data"]
+    return values
 
 
 # ---------------------------------------------------------------------------
@@ -183,7 +190,7 @@ def run(model_id: str, port: Optional[int], ctx: Optional[int], no_flash_attn: b
         # Block until interrupted (cross-platform).
         stop_event = threading.Event()
         while True:
-            stop_event.wait(timeout=RUN_BLOCK_WAIT_SECONDS)
+            stop_event.wait(timeout=RUN_BLOCK_POLL_SECONDS)
     except KeyboardInterrupt:
         pass
     finally:
@@ -524,9 +531,6 @@ def show_config() -> None:
     }
     for section_name, section in sections.items():
         console.print(f"[bold cyan][{section_name}][/bold cyan]")
-        section_values = asdict(section) if is_dataclass(section) else vars(section)
-        if "_data" in section_values and isinstance(section_values["_data"], dict):
-            section_values = section_values["_data"]
-        for k, v in section_values.items():
+        for k, v in _section_values(section).items():
             console.print(f"  {k} = {v!r}")
         console.print()

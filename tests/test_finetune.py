@@ -1,4 +1,4 @@
-"""Tests for opendrop.training.finetune."""
+"""Tests for opendrop.training.fine-tune flow."""
 
 from __future__ import annotations
 
