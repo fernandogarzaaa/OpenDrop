@@ -35,6 +35,7 @@ from opendrop.inference.llamacpp import get_manager
 # Hardware panel
 # ---------------------------------------------------------------------------
 
+
 class HardwarePanel(Static):
     """Displays the hardware profile summary."""
 
@@ -52,35 +53,38 @@ class HardwarePanel(Static):
         self._profile = profile
 
     def on_mount(self) -> None:
-        self.update(
-            Text.from_markup(
-                f"[bold cyan]Hardware[/bold cyan]\n{self._profile.summary()}"
-            )
-        )
+        self.update(Text.from_markup(f"[bold cyan]Hardware[/bold cyan]\n{self._profile.summary()}"))
 
 
 # ---------------------------------------------------------------------------
 # Model table
 # ---------------------------------------------------------------------------
 
+
 class ModelTable(DataTable):
     """Interactive table of registered models."""
 
     COLUMNS: ClassVar[list[str]] = [
-        "ID", "Name", "Arch", "Params", "Quant", "Size", "Status",
+        "ID",
+        "Name",
+        "Arch",
+        "Params",
+        "Quant",
+        "Size",
+        "Status",
     ]
 
     def __init__(self, records: list[ModelRecord], running_ids: set[str]) -> None:
         super().__init__()
         self._records = records
-        self._running = running_ids
+        self._running_ids = running_ids
 
     def on_mount(self) -> None:
         self.add_columns(*self.COLUMNS)
         for rec in self._records:
             status = (
                 Text("● running", style="bold green")
-                if rec.id in self._running
+                if rec.id in self._running_ids
                 else Text("○ idle", style="dim")
             )
             self.add_row(
@@ -97,6 +101,7 @@ class ModelTable(DataTable):
 # ---------------------------------------------------------------------------
 # Main App
 # ---------------------------------------------------------------------------
+
 
 class OpenDropTUI(App):
     """OpenDrop terminal dashboard."""
@@ -134,7 +139,7 @@ class OpenDropTUI(App):
     }
     """
 
-    BINDINGS: ClassVar[list[Binding]] = [
+    BINDINGS: ClassVar[list[Binding | tuple[str, str] | tuple[str, str, str]]] = [
         Binding("q", "quit", "Quit"),
         Binding("r", "refresh", "Refresh"),
     ]
@@ -142,7 +147,7 @@ class OpenDropTUI(App):
     def __init__(self) -> None:
         super().__init__()
         cfg = get_config()
-        self._registry = Registry(cfg.registry_db())
+        self._model_registry = Registry(cfg.registry_db())
         self._profile = detect_hardware()
 
     def compose(self) -> ComposeResult:
@@ -150,7 +155,7 @@ class OpenDropTUI(App):
         with Horizontal(id="main"):
             with Vertical(id="left"):
                 yield Label("Models", classes="section-title")
-                records = self._registry.list_models()
+                records = self._model_registry.list_models()
                 running = set(get_manager().running_models().keys())
                 yield ModelTable(records, running)
                 yield RichLog(id="log-panel", highlight=True, markup=True)
@@ -166,9 +171,7 @@ class OpenDropTUI(App):
         else:
             lines = [Text("Active servers:", style="bold cyan")]
             for rec_id, srv in running.items():
-                lines.append(
-                    Text(f"  {rec_id}  →  {srv.base_url}", style="green")
-                )
+                lines.append(Text(f"  {rec_id}  →  {srv.base_url}", style="green"))
             content = Text("\n").join(lines)
         panel = Static(content)
         panel.styles.border = ("round", "green")

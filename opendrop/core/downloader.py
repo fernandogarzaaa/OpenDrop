@@ -120,12 +120,11 @@ def download(
         )
 
         try:
-            with httpx.stream("GET", url, headers=headers,
-                              follow_redirects=True, timeout=60) as resp:
+            with httpx.stream(
+                "GET", url, headers=headers, follow_redirects=True, timeout=60
+            ) as resp:
                 if resp.status_code not in (200, 206):
-                    raise DownloadError(
-                        f"HTTP {resp.status_code} downloading {url}"
-                    )
+                    raise DownloadError(f"HTTP {resp.status_code} downloading {url}")
                 total = int(resp.headers.get("content-length", 0)) + resume_at
                 mode = "ab" if resume_at and resp.status_code == 206 else "wb"
                 if mode == "wb":
@@ -151,8 +150,7 @@ def download(
             if actual != expected_sha256:
                 dest.unlink(missing_ok=True)
                 raise DownloadError(
-                    f"SHA-256 mismatch for {fname}: "
-                    f"expected {expected_sha256}, got {actual}"
+                    f"SHA-256 mismatch for {fname}: expected {expected_sha256}, got {actual}"
                 )
 
         return dest
@@ -181,7 +179,6 @@ def download_repo_files(
     for fname in filenames:
         url = f"{base}/{fname}"
         paths.append(
-            download(url, dest_dir, filename=fname, token=token,
-                     show_progress=show_progress)
+            download(url, dest_dir, filename=fname, token=token, show_progress=show_progress)
         )
     return paths

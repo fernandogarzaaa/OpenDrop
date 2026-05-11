@@ -70,12 +70,24 @@ class TestChatCompletions:
         from opendrop.core.registry import ModelRecord
 
         rec = ModelRecord(
-            id="test-model", model_id="org/model", source_url="",
-            display_name="test-model", architecture="llama", params_b=7.0,
-            quant="Q4_K_M", format="gguf", path="/nonexistent/model.gguf",
-            size_bytes=0, license_id="apache-2.0", license_warning="",
-            tags=[], pipeline_tag="", added_at=datetime.now(timezone.utc).isoformat(),
-            last_used=None, server_port=None, extra={},
+            id="test-model",
+            model_id="org/model",
+            source_url="",
+            display_name="test-model",
+            architecture="llama",
+            params_b=7.0,
+            quant="Q4_K_M",
+            format="gguf",
+            path="/nonexistent/model.gguf",
+            size_bytes=0,
+            license_id="apache-2.0",
+            license_warning="",
+            tags=[],
+            pipeline_tag="",
+            added_at=datetime.now(timezone.utc).isoformat(),
+            last_used=None,
+            server_port=None,
+            extra={},
         )
         mock_registry.get_model.return_value = rec
 
