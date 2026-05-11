@@ -16,6 +16,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import cast
 from urllib.parse import urlparse
 
 import httpx
@@ -301,10 +302,9 @@ def resolve(source: str, token: str | None = None) -> ModelSpec:
 
     # --- HuggingFace model page URL or bare model ID ------------------------
     if _is_hf_url(source):
-        hf_model_id = _extract_hf_model_id(source)
-        if not hf_model_id:
+        model_id = cast(str, _extract_hf_model_id(source))
+        if not model_id:
             raise ValueError(f"Cannot extract model ID from URL: {source}")
-        model_id = hf_model_id
     elif "/" in source and not source.startswith("http"):
         # bare 'org/model' ID
         model_id = source

@@ -28,6 +28,17 @@ Date: 2026-05-11
 - Added CodeQL workflow for security scanning.
 - Added issue templates and PR template.
 
+## Final phase completion
+
+- Added beta-tag gate workflow to enforce lint/test/type/build/security checks on beta tags.
+- Added wheel install + CLI entrypoint verification in CI package job.
+- Corrected README quickstart flow to distinguish `run` (`:11401`) from `serve` (`:11400`).
+- Re-validated full local quality suite:
+  - Ruff lint + format check: PASS
+  - Tests: PASS (`108 passed`)
+  - Type check: PASS
+  - Package build: PASS
+
 ## Remaining release action
 
-- Ensure all CI checks are green on the release candidate commit.
+- Keep branch protection required checks aligned with CI/Beta Gate jobs before tagging.

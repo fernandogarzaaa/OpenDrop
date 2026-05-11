@@ -30,13 +30,18 @@ opendrop pull https://huggingface.co/bartowski/Meta-Llama-3.1-8B-Instruct-GGUF
 # Search models on Hugging Face
 opendrop search "llama 3.1 instruct"
 
-# Run it (starts an OpenAI-compatible server on :11400)
+# Run a single model server (default port: :11401)
 opendrop run llama-3.1-8b-instruct
 
-# Chat via any OpenAI client, e.g.:
+# Or run the multi-model OpenAI-compatible gateway on :11400
+opendrop serve
+
+# Chat via any OpenAI client (serve on :11400), e.g.:
 curl http://localhost:11400/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{"model":"llama-3.1-8b-instruct","messages":[{"role":"user","content":"Hello!"}]}'
+
+# If using `opendrop run`, use port :11401 instead.
 
 # Fine-tune with a local dataset
 opendrop fine-tune llama-3.1-8b-instruct --data my_data.jsonl

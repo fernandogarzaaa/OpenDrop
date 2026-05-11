@@ -1,13 +1,14 @@
-name: CI
+name: Beta Gate
 
 on:
   push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+    tags:
+      - "v*b*"
+  workflow_dispatch:
 
 permissions:
   contents: read
+  security-events: write
 
 jobs:
   lint:
@@ -72,3 +73,17 @@ jobs:
         run: |
           opendrop --version
           opendrop --help
+
+  security:
+    name: CodeQL (Python)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: python
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+      - name: Analyze
+        uses: github/codeql-action/analyze@v3
