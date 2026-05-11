@@ -121,6 +121,86 @@ def _deep_merge(base: dict, override: dict) -> dict:
     return result
 
 
+def _ensure_int_in_range(
+    section: str,
+    key: str,
+    value: Any,
+    minimum: int,
+    maximum: int | None = None,
+) -> int:
+    if not isinstance(value, int):
+        raise ValueError(f"config [{section}].{key} must be an integer")
+    if value < minimum:
+        raise ValueError(f"config [{section}].{key} must be >= {minimum}")
+    if maximum is not None and value > maximum:
+        raise ValueError(f"config [{section}].{key} must be <= {maximum}")
+    return value
+
+
+def _ensure_bool(section: str, key: str, value: Any) -> bool:
+    if not isinstance(value, bool):
+        raise ValueError(f"config [{section}].{key} must be a boolean")
+    return value
+
+
+def _validate_config_data(data: dict[str, Any]) -> dict[str, Any]:
+    server = data.get("server", {})
+    storage = data.get("storage", {})
+    inference = data.get("inference", {})
+    training = data.get("training", {})
+
+    host = server.get("host")
+    if not isinstance(host, str) or not host.strip():
+        raise ValueError("config [server].host must be a non-empty string")
+    _ensure_int_in_range("server", "port", server.get("port"), 1, 65535)
+    _ensure_bool("server", "cors", server.get("cors"))
+
+    for section_name, section_data, key in (
+        ("storage", storage, "models_dir"),
+        ("storage", storage, "registry_db"),
+        ("training", training, "output_dir"),
+    ):
+        raw_value = section_data.get(key)
+        if not isinstance(raw_value, str) or not raw_value.strip():
+            raise ValueError(f"config [{section_name}].{key} must be a non-empty string path")
+
+    _ensure_int_in_range("inference", "context_size", inference.get("context_size"), 1)
+    _ensure_int_in_range("inference", "parallel", inference.get("parallel"), 1)
+    gpu_layers = inference.get("gpu_layers")
+    if not isinstance(gpu_layers, int):
+        raise ValueError("config [inference].gpu_layers must be an integer")
+    if gpu_layers < -1:
+        raise ValueError("config [inference].gpu_layers must be >= -1")
+    _ensure_bool("inference", "disk_kv_cache", inference.get("disk_kv_cache"))
+    _ensure_bool("inference", "flash_attn", inference.get("flash_attn"))
+
+    _ensure_int_in_range("training", "lora_rank", training.get("lora_rank"), 1)
+    _ensure_int_in_range("training", "lora_alpha", training.get("lora_alpha"), 1)
+    _ensure_int_in_range("training", "batch_size", training.get("batch_size"), 1)
+    _ensure_int_in_range(
+        "training",
+        "gradient_accumulation",
+        training.get("gradient_accumulation"),
+        1,
+    )
+    _ensure_int_in_range("training", "max_seq_length", training.get("max_seq_length"), 1)
+
+    learning_rate = training.get("learning_rate")
+    if not isinstance(learning_rate, (int, float)) or learning_rate <= 0:
+        raise ValueError("config [training].learning_rate must be > 0")
+    warmup_ratio = training.get("warmup_ratio")
+    if not isinstance(warmup_ratio, (int, float)) or not 0 <= warmup_ratio <= 1:
+        raise ValueError("config [training].warmup_ratio must be between 0 and 1")
+
+    default_method = training.get("default_method")
+    if default_method not in {"lora", "qlora", "full", "mlx"}:
+        raise ValueError(
+            "config [training].default_method must be one of: lora, qlora, full, mlx"
+        )
+
+    return data
+
+
 def load_config(path: Path | None = None) -> Config:
     """Load and return the merged Config object."""
     if path is None:
@@ -131,6 +211,7 @@ def load_config(path: Path | None = None) -> Config:
         with open(path, "rb") as fh:
             user_data = tomllib.load(fh)
         data = _deep_merge(data, user_data)
+    data = _validate_config_data(data)
 
     return Config(data)
 

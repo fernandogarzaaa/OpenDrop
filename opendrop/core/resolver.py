@@ -296,9 +296,10 @@ def resolve(source: str, token: str | None = None) -> ModelSpec:
 
     # --- HuggingFace model page URL or bare model ID ------------------------
     if _is_hf_url(source):
-        model_id = _extract_hf_model_id(source)
-        if not model_id:
+        extracted_model_id = _extract_hf_model_id(source)
+        if not extracted_model_id:
             raise ValueError(f"Cannot extract model ID from URL: {source}")
+        model_id = extracted_model_id
     elif "/" in source and not source.startswith("http"):
         # bare 'org/model' ID
         model_id = source
@@ -323,7 +324,7 @@ def search_models(
     headers = {}
     if token:
         headers["Authorization"] = f"Bearer {token}"
-    params = {"search": query, "limit": max(1, min(limit, 50))}
+    params: dict[str, str | int] = {"search": query, "limit": max(1, min(limit, 50))}
 
     with httpx.Client(follow_redirects=True, timeout=30) as client:
         r = client.get(f"{HF_API}/models", headers=headers, params=params)

@@ -73,14 +73,14 @@ class ModelTable(DataTable):
     def __init__(self, records: list[ModelRecord], running_ids: set[str]) -> None:
         super().__init__()
         self._records = records
-        self._running = running_ids
+        self._running_ids = running_ids
 
     def on_mount(self) -> None:
         self.add_columns(*self.COLUMNS)
         for rec in self._records:
             status = (
                 Text("● running", style="bold green")
-                if rec.id in self._running
+                if rec.id in self._running_ids
                 else Text("○ idle", style="dim")
             )
             self.add_row(
@@ -134,7 +134,7 @@ class OpenDropTUI(App):
     }
     """
 
-    BINDINGS: ClassVar[list[Binding]] = [
+    BINDINGS: ClassVar[list[Binding | tuple[str, str] | tuple[str, str, str]]] = [
         Binding("q", "quit", "Quit"),
         Binding("r", "refresh", "Refresh"),
     ]
@@ -142,7 +142,7 @@ class OpenDropTUI(App):
     def __init__(self) -> None:
         super().__init__()
         cfg = get_config()
-        self._registry = Registry(cfg.registry_db())
+        self._model_registry = Registry(cfg.registry_db())
         self._profile = detect_hardware()
 
     def compose(self) -> ComposeResult:
@@ -150,7 +150,7 @@ class OpenDropTUI(App):
         with Horizontal(id="main"):
             with Vertical(id="left"):
                 yield Label("Models", classes="section-title")
-                records = self._registry.list_models()
+                records = self._model_registry.list_models()
                 running = set(get_manager().running_models().keys())
                 yield ModelTable(records, running)
                 yield RichLog(id="log-panel", highlight=True, markup=True)
