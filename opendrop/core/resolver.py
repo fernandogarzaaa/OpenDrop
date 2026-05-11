@@ -301,10 +301,10 @@ def resolve(source: str, token: str | None = None) -> ModelSpec:
 
     # --- HuggingFace model page URL or bare model ID ------------------------
     if _is_hf_url(source):
-        extracted_model_id = _extract_hf_model_id(source)
-        if not extracted_model_id:
+        hf_model_id = _extract_hf_model_id(source)
+        if not hf_model_id:
             raise ValueError(f"Cannot extract model ID from URL: {source}")
-        model_id = extracted_model_id
+        model_id = hf_model_id
     elif "/" in source and not source.startswith("http"):
         # bare 'org/model' ID
         model_id = source
