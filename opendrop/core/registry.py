@@ -62,6 +62,7 @@ CREATE INDEX IF NOT EXISTS idx_adapters_model ON adapters(model_id);
 # Dataclasses
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ModelRecord:
     id: str
@@ -87,8 +88,8 @@ class ModelRecord:
         return Path(self.path)
 
     def size_human(self) -> str:
-        gb = self.size_bytes / (1024 ** 3)
-        return f"{gb:.2f} GB" if gb >= 1 else f"{self.size_bytes / (1024 ** 2):.0f} MB"
+        gb = self.size_bytes / (1024**3)
+        return f"{gb:.2f} GB" if gb >= 1 else f"{self.size_bytes / (1024**2):.0f} MB"
 
 
 @dataclass
@@ -106,6 +107,7 @@ class AdapterRecord:
 # ---------------------------------------------------------------------------
 # Sync helpers
 # ---------------------------------------------------------------------------
+
 
 def _row_to_model(row: sqlite3.Row) -> ModelRecord:
     d = dict(row)
@@ -127,6 +129,7 @@ def _now() -> str:
 # ---------------------------------------------------------------------------
 # Sync Registry (used from CLI)
 # ---------------------------------------------------------------------------
+
 
 class Registry:
     """Synchronous SQLite model registry."""
@@ -162,12 +165,23 @@ class Registry:
                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                 """,
                 (
-                    record.id, record.model_id, record.source_url,
-                    record.display_name, record.architecture, record.params_b,
-                    record.quant, record.format, record.path, record.size_bytes,
-                    record.license_id, record.license_warning,
-                    json.dumps(record.tags), record.pipeline_tag,
-                    record.added_at, record.last_used, record.server_port,
+                    record.id,
+                    record.model_id,
+                    record.source_url,
+                    record.display_name,
+                    record.architecture,
+                    record.params_b,
+                    record.quant,
+                    record.format,
+                    record.path,
+                    record.size_bytes,
+                    record.license_id,
+                    record.license_warning,
+                    json.dumps(record.tags),
+                    record.pipeline_tag,
+                    record.added_at,
+                    record.last_used,
+                    record.server_port,
                     json.dumps(record.extra),
                 ),
             )
@@ -183,9 +197,7 @@ class Registry:
 
     def list_models(self) -> list[ModelRecord]:
         with self._connect() as conn:
-            rows = conn.execute(
-                "SELECT * FROM models ORDER BY added_at DESC"
-            ).fetchall()
+            rows = conn.execute("SELECT * FROM models ORDER BY added_at DESC").fetchall()
             return [_row_to_model(r) for r in rows]
 
     def remove_model(self, model_id: str) -> bool:
@@ -198,15 +210,11 @@ class Registry:
 
     def touch_model(self, model_id: str) -> None:
         with self._connect() as conn:
-            conn.execute(
-                "UPDATE models SET last_used=? WHERE id=?", (_now(), model_id)
-            )
+            conn.execute("UPDATE models SET last_used=? WHERE id=?", (_now(), model_id))
 
     def set_port(self, model_id: str, port: int | None) -> None:
         with self._connect() as conn:
-            conn.execute(
-                "UPDATE models SET server_port=? WHERE id=?", (port, model_id)
-            )
+            conn.execute("UPDATE models SET server_port=? WHERE id=?", (port, model_id))
 
     # --- Adapters ---
 
@@ -219,8 +227,13 @@ class Registry:
                 VALUES (?,?,?,?,?,?,?,?)
                 """,
                 (
-                    record.id, record.model_id, record.name, record.method,
-                    record.path, record.dataset_url, record.added_at,
+                    record.id,
+                    record.model_id,
+                    record.name,
+                    record.method,
+                    record.path,
+                    record.dataset_url,
+                    record.added_at,
                     json.dumps(record.extra),
                 ),
             )
@@ -233,9 +246,7 @@ class Registry:
                     (model_id,),
                 ).fetchall()
             else:
-                rows = conn.execute(
-                    "SELECT * FROM adapters ORDER BY added_at DESC"
-                ).fetchall()
+                rows = conn.execute("SELECT * FROM adapters ORDER BY added_at DESC").fetchall()
             return [_row_to_adapter(r) for r in rows]
 
     def remove_adapter(self, adapter_id: str) -> bool:
@@ -248,6 +259,7 @@ class Registry:
 # Async Registry (used from FastAPI server)
 # ---------------------------------------------------------------------------
 
+
 class AsyncRegistry:
     """Asynchronous SQLite model registry using aiosqlite."""
 
@@ -256,6 +268,7 @@ class AsyncRegistry:
 
     async def init(self) -> None:
         import aiosqlite
+
         async with aiosqlite.connect(self._db_path) as db:
             await db.executescript(_DDL)
             await db.commit()
@@ -263,6 +276,7 @@ class AsyncRegistry:
     @asynccontextmanager
     async def _conn(self) -> AsyncIterator:
         import aiosqlite
+
         async with aiosqlite.connect(self._db_path) as db:
             db.row_factory = aiosqlite.Row
             yield db
@@ -278,9 +292,7 @@ class AsyncRegistry:
 
     async def list_models(self) -> list[ModelRecord]:
         async with self._conn() as db:
-            async with db.execute(
-                "SELECT * FROM models ORDER BY added_at DESC"
-            ) as cur:
+            async with db.execute("SELECT * FROM models ORDER BY added_at DESC") as cur:
                 rows = await cur.fetchall()
                 result = []
                 for r in rows:
@@ -292,7 +304,5 @@ class AsyncRegistry:
 
     async def touch_model(self, model_id: str) -> None:
         async with self._conn() as db:
-            await db.execute(
-                "UPDATE models SET last_used=? WHERE id=?", (_now(), model_id)
-            )
+            await db.execute("UPDATE models SET last_used=? WHERE id=?", (_now(), model_id))
             await db.commit()

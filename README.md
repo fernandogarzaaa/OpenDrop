@@ -252,3 +252,14 @@ OpenDrop is built on the shoulders of:
 ## License
 
 MIT — see [LICENSE](LICENSE)
+
+---
+
+## Public Beta Readiness Docs
+
+- [Beta release gates](docs/beta_release_gates.md)
+- [Beta readiness report](docs/beta_readiness_report.md)
+- [Troubleshooting](docs/troubleshooting.md)
+- [Known limitations](docs/known_limitations.md)
+- [Beta launch playbook](docs/beta_launch_playbook.md)
+- [Changelog](CHANGELOG.md)

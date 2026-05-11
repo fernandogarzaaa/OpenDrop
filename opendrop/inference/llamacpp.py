@@ -103,6 +103,7 @@ def _release_port(port: int) -> None:
 # Server instance
 # ---------------------------------------------------------------------------
 
+
 class LlamaCppServer:
     """Manages one llama-server subprocess."""
 
@@ -131,12 +132,18 @@ class LlamaCppServer:
     def _build_cmd(self) -> list[str]:
         cmd = [
             str(self._binary),
-            "--model", str(self.gguf_path),
-            "--port", str(self.port),
-            "--host", "127.0.0.1",
-            "--ctx-size", str(self.ctx_size),
-            "--n-gpu-layers", str(self.gpu_layers),
-            "--parallel", str(self.parallel),
+            "--model",
+            str(self.gguf_path),
+            "--port",
+            str(self.port),
+            "--host",
+            "127.0.0.1",
+            "--ctx-size",
+            str(self.ctx_size),
+            "--n-gpu-layers",
+            str(self.gpu_layers),
+            "--parallel",
+            str(self.parallel),
         ]
         if self.flash_attn:
             cmd.append("--flash-attn")
@@ -154,9 +161,7 @@ class LlamaCppServer:
             stderr=subprocess.STDOUT,
             text=True,
         )
-        self._log_thread = threading.Thread(
-            target=self._stream_logs, daemon=True
-        )
+        self._log_thread = threading.Thread(target=self._stream_logs, daemon=True)
         self._log_thread.start()
         self._wait_healthy(timeout)
 
@@ -169,6 +174,7 @@ class LlamaCppServer:
         url = f"http://127.0.0.1:{self.port}/health"
         deadline = time.time() + timeout
         import httpx
+
         while time.time() < deadline:
             if self._proc and self._proc.poll() is not None:
                 raise RuntimeError(
@@ -177,9 +183,7 @@ class LlamaCppServer:
             try:
                 r = httpx.get(url, timeout=2)
                 if r.status_code == 200:
-                    console.print(
-                        f"[green]✓ llama-server ready on port {self.port}[/green]"
-                    )
+                    console.print(f"[green]✓ llama-server ready on port {self.port}[/green]")
                     return
             except Exception:
                 pass
@@ -215,6 +219,7 @@ class LlamaCppServer:
 # ---------------------------------------------------------------------------
 # Multi-server manager
 # ---------------------------------------------------------------------------
+
 
 class ServerManager:
     """Manages a pool of LlamaCppServer instances keyed by model record ID."""

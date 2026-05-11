@@ -102,10 +102,13 @@ def convert_to_gguf(
     out_file = output_dir / f"{model_name}-{outtype}.gguf"
 
     cmd = [
-        sys.executable, str(script),
+        sys.executable,
+        str(script),
         str(model_dir),
-        "--outtype", outtype,
-        "--outfile", str(out_file),
+        "--outtype",
+        outtype,
+        "--outfile",
+        str(out_file),
     ]
     if extra_args:
         cmd.extend(extra_args)
@@ -116,9 +119,7 @@ def convert_to_gguf(
         # Some versions write with a different naming scheme
         gguf_files = list(output_dir.glob("*.gguf"))
         if not gguf_files:
-            raise ConversionError(
-                f"Conversion ran but no .gguf found in {output_dir}"
-            )
+            raise ConversionError(f"Conversion ran but no .gguf found in {output_dir}")
         out_file = gguf_files[0]
 
     return out_file

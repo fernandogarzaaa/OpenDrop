@@ -35,6 +35,7 @@ from opendrop.inference.llamacpp import get_manager
 # Hardware panel
 # ---------------------------------------------------------------------------
 
+
 class HardwarePanel(Static):
     """Displays the hardware profile summary."""
 
@@ -52,22 +53,25 @@ class HardwarePanel(Static):
         self._profile = profile
 
     def on_mount(self) -> None:
-        self.update(
-            Text.from_markup(
-                f"[bold cyan]Hardware[/bold cyan]\n{self._profile.summary()}"
-            )
-        )
+        self.update(Text.from_markup(f"[bold cyan]Hardware[/bold cyan]\n{self._profile.summary()}"))
 
 
 # ---------------------------------------------------------------------------
 # Model table
 # ---------------------------------------------------------------------------
 
+
 class ModelTable(DataTable):
     """Interactive table of registered models."""
 
     COLUMNS: ClassVar[list[str]] = [
-        "ID", "Name", "Arch", "Params", "Quant", "Size", "Status",
+        "ID",
+        "Name",
+        "Arch",
+        "Params",
+        "Quant",
+        "Size",
+        "Status",
     ]
 
     def __init__(self, records: list[ModelRecord], running_ids: set[str]) -> None:
@@ -97,6 +101,7 @@ class ModelTable(DataTable):
 # ---------------------------------------------------------------------------
 # Main App
 # ---------------------------------------------------------------------------
+
 
 class OpenDropTUI(App):
     """OpenDrop terminal dashboard."""
@@ -166,9 +171,7 @@ class OpenDropTUI(App):
         else:
             lines = [Text("Active servers:", style="bold cyan")]
             for rec_id, srv in running.items():
-                lines.append(
-                    Text(f"  {rec_id}  →  {srv.base_url}", style="green")
-                )
+                lines.append(Text(f"  {rec_id}  →  {srv.base_url}", style="green"))
             content = Text("\n").join(lines)
         panel = Static(content)
         panel.styles.border = ("round", "green")

@@ -194,9 +194,7 @@ def _validate_config_data(data: dict[str, Any]) -> dict[str, Any]:
 
     default_method = training.get("default_method")
     if default_method not in {"lora", "qlora", "full", "mlx"}:
-        raise ValueError(
-            "config [training].default_method must be one of: lora, qlora, full, mlx"
-        )
+        raise ValueError("config [training].default_method must be one of: lora, qlora, full, mlx")
 
     return data
 
