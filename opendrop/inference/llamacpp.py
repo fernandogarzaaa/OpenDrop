@@ -9,10 +9,12 @@ Manages one `llama-server` process per model instance.  Provides:
 
 from __future__ import annotations
 
+import os
 import shutil
 import signal
 import socket
 import subprocess
+import sys
 import threading
 import time
 from pathlib import Path
@@ -25,8 +27,8 @@ console = Console()
 # Binary discovery
 # ---------------------------------------------------------------------------
 
-_SERVER_NAMES = ["llama-server", "llama_server", "server"]
-_QUANTIZE_NAMES = ["llama-quantize", "llama_quantize"]
+_SERVER_NAMES = ["llama-server", "llama_server", "server", "llama-server.exe"]
+_QUANTIZE_NAMES = ["llama-quantize", "llama_quantize", "llama-quantize.exe"]
 _COMMON_DIRS = [
     Path("/usr/local/bin"),
     Path("/opt/homebrew/bin"),
@@ -34,6 +36,12 @@ _COMMON_DIRS = [
     Path.home() / "llama.cpp" / "build",
     Path("/usr/bin"),
 ]
+if sys.platform == "win32":
+    _COMMON_DIRS = [
+        Path(os.environ.get("PROGRAMFILES", "C:/Program Files")) / "llama.cpp",
+        Path.home() / "llama.cpp" / "build" / "bin" / "Release",
+        Path.home() / "llama.cpp" / "build" / "bin",
+    ] + _COMMON_DIRS
 
 
 def find_binary(names: list[str]) -> Path | None:
@@ -61,12 +69,27 @@ def find_quantize_binary() -> Path | None:
 def require_server_binary() -> Path:
     b = find_server_binary()
     if not b:
+        import platform
+
+        if platform.system() == "Windows":
+            install_hint = (
+                "Windows: Download a pre-built release from\n"
+                "  https://github.com/ggml-org/llama.cpp/releases\n"
+                "  and add the directory containing llama-server.exe to PATH."
+            )
+        elif platform.system() == "Darwin":
+            install_hint = "  macOS (Homebrew): brew install llama.cpp"
+        else:
+            install_hint = (
+                "  Linux: Build from source:\n"
+                "    git clone https://github.com/ggml-org/llama.cpp && cd llama.cpp\n"
+                "    cmake -B build -DGGML_CUDA=ON && cmake --build build --config Release -j"
+            )
         raise RuntimeError(
-            "llama-server binary not found.\n"
-            "Install llama.cpp:\n"
-            "  macOS (Homebrew): brew install llama.cpp\n"
-            "  Manual:           https://github.com/ggml-org/llama.cpp#build\n"
-            "Then re-run opendrop."
+            f"llama-server binary not found.\n"
+            f"Install llama.cpp:\n"
+            f"{install_hint}\n"
+            f"Then re-run opendrop."
         )
     return b
 
@@ -196,7 +219,10 @@ class LlamaCppServer:
         if self._proc is None:
             return
         if self._proc.poll() is None:
-            self._proc.send_signal(signal.SIGTERM)
+            if sys.platform == "win32":
+                self._proc.terminate()
+            else:
+                self._proc.send_signal(signal.SIGTERM)
             try:
                 self._proc.wait(timeout=10)
             except subprocess.TimeoutExpired:

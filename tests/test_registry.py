@@ -168,3 +168,31 @@ class TestModelRecord:
         rec = _make_record()
         rec.path = "/tmp/model.gguf"
         assert rec.path_obj() == Path("/tmp/model.gguf")
+
+    def test_search_models_by_id(self, registry: Registry):
+        registry.add_model(_make_record("-x"))
+        registry.add_model(_make_record("-y"))
+        results = registry.search_models("km-x")
+        assert len(results) == 1
+        assert results[0].id == "llama-3-8b-q4-km-x"
+
+    def test_search_models_by_display_name(self, registry: Registry):
+        registry.add_model(_make_record("-z"))
+        results = registry.search_models("llama-3-8b-q4-km-z")
+        assert len(results) == 1
+
+    def test_search_models_case_insensitive(self, registry: Registry):
+        registry.add_model(_make_record("-ci"))
+        results = registry.search_models("LLAMA")
+        assert len(results) >= 1
+
+    def test_search_models_no_match(self, registry: Registry):
+        registry.add_model(_make_record("-nm"))
+        results = registry.search_models("nonexistent-xyz-model")
+        assert results == []
+
+    def test_search_models_partial_match(self, registry: Registry):
+        registry.add_model(_make_record("-pa"))
+        registry.add_model(_make_record("-pb"))
+        results = registry.search_models("llama")
+        assert len(results) >= 2

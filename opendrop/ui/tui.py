@@ -109,6 +109,8 @@ class OpenDropTUI(App):
     TITLE = "OpenDrop"
     SUB_TITLE = "Universal Local AI Aggregator"
 
+    REFRESH_INTERVAL: ClassVar[float] = 5.0  # seconds
+
     CSS = """
     Screen {
         layers: base overlay;
@@ -141,7 +143,7 @@ class OpenDropTUI(App):
 
     BINDINGS: ClassVar[list[Binding | tuple[str, str] | tuple[str, str, str]]] = [
         Binding("q", "quit", "Quit"),
-        Binding("r", "refresh", "Refresh"),
+        Binding("r", "refresh", "Force Refresh"),
     ]
 
     def __init__(self) -> None:
@@ -179,15 +181,39 @@ class OpenDropTUI(App):
         panel.styles.height = "auto"
         return panel
 
-    def action_refresh(self) -> None:
-        self.exit()
-        OpenDropTUI().run()
+    async def action_refresh(self) -> None:
+        await self._auto_refresh()
 
     def on_mount(self) -> None:
         log: RichLog = self.query_one("#log-panel")  # type: ignore[assignment]
         log.write("[bold]OpenDrop TUI ready.[/bold]")
         log.write(f"Registry: {get_config().registry_db()}")
         log.write(f"Models dir: {get_config().models_dir()}")
+        self.set_interval(self.REFRESH_INTERVAL, self._auto_refresh)
+
+    async def _auto_refresh(self) -> None:
+        try:
+            records = self._model_registry.list_models()
+            running = set(get_manager().running_models().keys())
+            table: ModelTable = self.query_one(ModelTable)
+            table.clear()
+            for rec in records:
+                status = (
+                    Text("● running", style="bold green")
+                    if rec.id in running
+                    else Text("○ idle", style="dim")
+                )
+                table.add_row(
+                    rec.id,
+                    rec.display_name,
+                    rec.architecture or "—",
+                    f"{rec.params_b:.1f}B" if rec.params_b else "—",
+                    rec.quant,
+                    rec.size_human(),
+                    status,
+                )
+        except Exception:
+            pass
 
 
 def run_tui() -> None:

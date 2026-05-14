@@ -216,6 +216,19 @@ class Registry:
         with self._connect() as conn:
             conn.execute("UPDATE models SET server_port=? WHERE id=?", (port, model_id))
 
+    def search_models(self, query: str) -> list[ModelRecord]:
+        q = f"%{query.lower()}%"
+        with self._connect() as conn:
+            rows = conn.execute(
+                """SELECT * FROM models WHERE
+               LOWER(id) LIKE ? OR LOWER(display_name) LIKE ? OR
+               LOWER(model_id) LIKE ? OR LOWER(architecture) LIKE ? OR
+               LOWER(pipeline_tag) LIKE ?
+               ORDER BY added_at DESC""",
+                (q, q, q, q, q),
+            ).fetchall()
+            return [_row_to_model(r) for r in rows]
+
     # --- Adapters ---
 
     def add_adapter(self, record: AdapterRecord) -> None:

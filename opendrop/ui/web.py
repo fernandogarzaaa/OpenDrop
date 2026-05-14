@@ -183,8 +183,16 @@ function renderModels(models) {
 }
 
 async function loadHardware() {
-  // OpenDrop doesn't expose hardware via API yet; show placeholder
-  document.getElementById('hw-badge').textContent = 'OpenDrop local';
+  try {
+    const r = await fetch(`${API}/v1/hardware`);
+    if (!r.ok) throw new Error('hardware fetch failed');
+    const hw = await r.json();
+    const gpuLabel = hw.gpu_name || hw.gpu_kind || 'CPU';
+    const memGB = (hw.effective_memory_mb / 1024).toFixed(1);
+    document.getElementById('hw-badge').textContent = `${gpuLabel} · ${memGB} GB`;
+  } catch(e) {
+    document.getElementById('hw-badge').textContent = 'OpenDrop local';
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -202,10 +210,47 @@ function selectModel(id) {
 async function pullModel() {
   const url = document.getElementById('pull-url').value.trim();
   if (!url) return;
-  showToast('Pull started — check server logs for progress');
-  // Pull is a CLI operation; the UI can show a message directing user to CLI
-  addSystemMsg(`Run in terminal: opendrop pull "${url}"`);
   document.getElementById('pull-url').value = '';
+  addSystemMsg(`Pulling: ${url}`);
+  showToast('Pull started — streaming progress…');
+
+  try {
+    const resp = await fetch(`${API}/v1/pull`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ source: url }),
+    });
+
+    if (!resp.ok) {
+      const err = await resp.text();
+      addSystemMsg(`Pull failed: ${err}`);
+      return;
+    }
+
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      const lines = buf.split('\n');
+      buf = lines.pop();  // keep incomplete line in buffer
+      for (const line of lines) {
+        if (!line.startsWith('data:')) continue;
+        const payload = line.slice(5).trim();
+        if (payload === '[DONE]') {
+          addSystemMsg('Pull complete. Refreshing model list…');
+          loadModels();
+          return;
+        }
+        if (payload) addSystemMsg(payload);
+      }
+    }
+  } catch(e) {
+    addSystemMsg(`Pull error: ${e.message}`);
+  }
 }
 
 // ---------------------------------------------------------------------------

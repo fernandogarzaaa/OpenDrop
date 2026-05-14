@@ -18,7 +18,6 @@ All commands use Click.  Sub-commands:
 from __future__ import annotations
 
 import sys
-import threading
 from dataclasses import asdict, is_dataclass
 from pathlib import Path
 
@@ -208,7 +207,10 @@ def run(model_id: str, port: int | None, ctx: int | None, no_flash_attn: bool) -
             "  Press Ctrl-C to stop."
         )
         # Block until interrupted (cross-platform).
-        threading.Event().wait()
+        import time
+
+        while True:
+            time.sleep(1)
     except KeyboardInterrupt:
         pass
     finally:
@@ -254,7 +256,8 @@ def serve(host: str | None, port: int | None, reload: bool) -> None:
 
 
 @main.command(name="list")
-def list_models() -> None:
+@click.option("--search", "-s", default=None, help="Filter models by name/ID (case-insensitive).")
+def list_models(search: str | None) -> None:
     """List all models in the registry."""
     from opendrop.config import get_config
     from opendrop.core.registry import Registry
@@ -263,6 +266,10 @@ def list_models() -> None:
     cfg = get_config()
     reg = Registry(cfg.registry_db())
     records = reg.list_models()
+
+    if search:
+        q = search.lower()
+        records = [r for r in records if q in r.id.lower() or q in r.display_name.lower()]
 
     if not records:
         console.print("[dim]No models in registry. Run `opendrop pull <url>` to get started.[/dim]")

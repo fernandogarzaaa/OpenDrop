@@ -113,3 +113,111 @@ class TestWebUI:
             r = c.get("/")
             assert r.status_code == 200
             assert "OpenDrop" in r.text
+
+
+class TestHardwareEndpoint:
+    def test_hardware_returns_200(self, client: TestClient, monkeypatch):
+        from types import SimpleNamespace
+        from unittest.mock import MagicMock
+
+        import opendrop.inference.server as server_mod
+
+        fake_gpu = SimpleNamespace(kind=MagicMock(value="none"), name="", unified=False)
+        fake_hw = SimpleNamespace(
+            os_name="Linux",
+            cpu_arch="x86_64",
+            cpu_cores=8,
+            cpu_physical_cores=4,
+            ram_mb=16384,
+            free_ram_mb=8192,
+            effective_memory_mb=4915,
+            gpu=fake_gpu,
+            usable_vram_mb=0,
+            backend_priority=["cpu"],
+            has_avx2=True,
+            has_neon=False,
+            ssd_est_mb_per_s=500,
+        )
+        monkeypatch.setattr(server_mod, "detect_hardware", lambda: fake_hw)
+        r = client.get("/v1/hardware")
+        assert r.status_code == 200
+        data = r.json()
+        assert data["os"] == "Linux"
+        assert data["cpu_arch"] == "x86_64"
+        assert data["cpu_cores"] == 8
+        assert data["ram_mb"] == 16384
+        assert data["has_avx2"] is True
+        assert data["has_neon"] is False
+        assert "effective_memory_mb" in data
+        assert "backend_priority" in data
+
+    def test_hardware_keys_present(self, client: TestClient, monkeypatch):
+        from types import SimpleNamespace
+        from unittest.mock import MagicMock
+
+        import opendrop.inference.server as server_mod
+
+        fake_gpu = SimpleNamespace(
+            kind=MagicMock(value="apple_silicon"), name="M3 Max", unified=True
+        )
+        fake_hw = SimpleNamespace(
+            os_name="Darwin",
+            cpu_arch="arm64",
+            cpu_cores=12,
+            cpu_physical_cores=12,
+            ram_mb=32768,
+            free_ram_mb=20000,
+            effective_memory_mb=24576,
+            gpu=fake_gpu,
+            usable_vram_mb=32768,
+            backend_priority=["metal", "cpu"],
+            has_avx2=False,
+            has_neon=True,
+            ssd_est_mb_per_s=2000,
+        )
+        monkeypatch.setattr(server_mod, "detect_hardware", lambda: fake_hw)
+        r = client.get("/v1/hardware")
+        assert r.status_code == 200
+        data = r.json()
+        expected_keys = {
+            "os",
+            "cpu_arch",
+            "cpu_cores",
+            "cpu_physical_cores",
+            "ram_mb",
+            "free_ram_mb",
+            "effective_memory_mb",
+            "gpu_kind",
+            "gpu_name",
+            "gpu_unified",
+            "usable_vram_mb",
+            "backend_priority",
+            "has_avx2",
+            "has_neon",
+            "ssd_est_mb_per_s",
+        }
+        assert expected_keys.issubset(data.keys())
+        assert data["gpu_name"] == "M3 Max"
+        assert data["gpu_unified"] is True
+
+
+class TestPullEndpoint:
+    def test_pull_missing_source_returns_422(self, client: TestClient):
+        r = client.post("/v1/pull", json={})
+        assert r.status_code == 422
+
+    def test_pull_streams_sse(self, client: TestClient, monkeypatch):
+        import opendrop.inference.server as server_mod
+
+        class _FakeOrch:
+            def pull(self, source, token=None, quant_override=None, **_kw):
+                pass  # no-op, sentinel will fire via finally
+
+        monkeypatch.setattr(server_mod, "Orchestrator", _FakeOrch)
+        r = client.post(
+            "/v1/pull",
+            json={"source": "org/model"},
+            headers={"Accept": "text/event-stream"},
+        )
+        assert r.status_code == 200
+        assert "text/event-stream" in r.headers.get("content-type", "")
