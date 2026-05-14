@@ -182,16 +182,16 @@ class OpenDropTUI(App):
         return panel
 
     async def action_refresh(self) -> None:
-        await self._auto_refresh()
+        await self._refresh_models_table()
 
     def on_mount(self) -> None:
         log: RichLog = self.query_one("#log-panel")  # type: ignore[assignment]
         log.write("[bold]OpenDrop TUI ready.[/bold]")
         log.write(f"Registry: {get_config().registry_db()}")
         log.write(f"Models dir: {get_config().models_dir()}")
-        self.set_interval(self.REFRESH_INTERVAL, self._auto_refresh)
+        self.set_interval(self.REFRESH_INTERVAL, self._refresh_models_table)
 
-    async def _auto_refresh(self) -> None:
+    async def _refresh_models_table(self) -> None:
         try:
             records = self._model_registry.list_models()
             running = set(get_manager().running_models().keys())
