@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import threading
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -95,7 +94,12 @@ class TestCriticalCLIFlows:
         monkeypatch.setattr(registry_mod, "Registry", DummyRegistry)
         monkeypatch.setattr(llamacpp_mod, "find_server_binary", lambda: "/usr/bin/llama-server")
         monkeypatch.setattr(llamacpp_mod, "LlamaCppServer", DummyServer)
-        monkeypatch.setattr(threading.Event, "wait", lambda self: None)
+        import time as _time
+
+        def _raise_kbi(_: float) -> None:
+            raise KeyboardInterrupt()
+
+        monkeypatch.setattr(_time, "sleep", _raise_kbi)
 
         result = CliRunner().invoke(cli_mod.main, ["run", "m1"])
         assert result.exit_code == 0
@@ -191,3 +195,78 @@ class TestCriticalCLIFlows:
         assert result.exit_code == 0
         assert "HW summary" in result.output
         assert "quant summary for 8.0" in result.output
+
+
+class TestListSearchFlag:
+    def test_list_search_filters_by_name(self, monkeypatch, tmp_path: Path):
+        from types import SimpleNamespace
+
+        import opendrop.config as config_mod
+        import opendrop.core.registry as registry_mod
+        import opendrop.inference.llamacpp as llamacpp_mod
+
+        cfg = SimpleNamespace(registry_db=lambda: tmp_path / "registry.db")
+        monkeypatch.setattr(config_mod, "get_config", lambda: cfg)
+
+        recs = [
+            SimpleNamespace(
+                id="llama-3-8b",
+                display_name="LLaMA 3 8B",
+                architecture="llama",
+                params_b=8.0,
+                quant="Q4_K_M",
+                size_bytes=4_000_000_000,
+                server_port=None,
+                size_human=lambda: "4.0 GB",
+            ),
+            SimpleNamespace(
+                id="mistral-7b",
+                display_name="Mistral 7B",
+                architecture="mistral",
+                params_b=7.0,
+                quant="Q4_K_M",
+                size_bytes=3_500_000_000,
+                server_port=None,
+                size_human=lambda: "3.5 GB",
+            ),
+        ]
+
+        monkeypatch.setattr(
+            registry_mod,
+            "Registry",
+            lambda *_a, **_kw: SimpleNamespace(list_models=lambda: recs),
+        )
+        monkeypatch.setattr(
+            llamacpp_mod,
+            "get_manager",
+            lambda: SimpleNamespace(running_models=lambda: {}),
+        )
+
+        result = CliRunner().invoke(main, ["list", "--search", "llama"])
+        assert result.exit_code == 0
+        assert "llama-3-8b" in result.output
+        assert "mistral-7b" not in result.output
+
+    def test_list_search_no_match_shows_empty_message(self, monkeypatch, tmp_path: Path):
+        from types import SimpleNamespace
+
+        import opendrop.config as config_mod
+        import opendrop.core.registry as registry_mod
+        import opendrop.inference.llamacpp as llamacpp_mod
+
+        cfg = SimpleNamespace(registry_db=lambda: tmp_path / "registry.db")
+        monkeypatch.setattr(config_mod, "get_config", lambda: cfg)
+        monkeypatch.setattr(
+            registry_mod,
+            "Registry",
+            lambda *_a, **_kw: SimpleNamespace(list_models=lambda: []),
+        )
+        monkeypatch.setattr(
+            llamacpp_mod,
+            "get_manager",
+            lambda: SimpleNamespace(running_models=lambda: {}),
+        )
+
+        result = CliRunner().invoke(main, ["list", "--search", "nonexistent"])
+        assert result.exit_code == 0
+        assert "No models" in result.output

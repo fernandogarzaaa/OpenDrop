@@ -3,8 +3,10 @@
 Wraps one or more llama-server instances behind a single FastAPI app that
 speaks the OpenAI REST API.  Endpoints:
   GET  /v1/models                  — list loaded models
+  GET  /v1/hardware                — hardware profile JSON
   POST /v1/chat/completions        — chat (streaming + non-streaming)
   POST /v1/completions             — legacy completions
+  POST /v1/pull                    — pull a model with SSE progress stream
   GET  /health                     — liveness check
 
 The server proxies requests to the appropriate llama-server instance based on
@@ -14,9 +16,11 @@ it is auto-started.
 
 from __future__ import annotations
 
+import asyncio
 import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from io import StringIO
 from pathlib import Path
 from typing import Any
 
@@ -25,8 +29,11 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, ConfigDict
+from rich.console import Console
 
 from opendrop.config import get_config
+from opendrop.core.hardware import detect_hardware
+from opendrop.core.orchestrator import Orchestrator
 from opendrop.core.registry import AsyncRegistry
 from opendrop.inference.llamacpp import ServerManager, get_manager
 
@@ -149,6 +156,85 @@ def create_app(
     @app.get("/health")
     async def health() -> dict:
         return {"status": "ok", "running_models": len(_manager.running_models())}
+
+    @app.get("/v1/hardware")
+    async def hardware_profile() -> dict:
+        hw = detect_hardware()
+        return {
+            "os": hw.os_name,
+            "cpu_arch": hw.cpu_arch,
+            "cpu_cores": hw.cpu_cores,
+            "cpu_physical_cores": hw.cpu_physical_cores,
+            "ram_mb": hw.ram_mb,
+            "free_ram_mb": hw.free_ram_mb,
+            "effective_memory_mb": hw.effective_memory_mb,
+            "gpu_kind": hw.gpu.kind.value,
+            "gpu_name": hw.gpu.name,
+            "gpu_unified": hw.gpu.unified,
+            "usable_vram_mb": hw.usable_vram_mb,
+            "backend_priority": hw.backend_priority,
+            "has_avx2": hw.has_avx2,
+            "has_neon": hw.has_neon,
+            "ssd_est_mb_per_s": hw.ssd_est_mb_per_s,
+        }
+
+    @app.post("/v1/pull")
+    async def pull_model(request: Request) -> StreamingResponse:
+        body = await request.json()
+        source: str = body.get("source", "")
+        token: str | None = body.get("token", None)
+        quant: str | None = body.get("quant", None)
+
+        if not source:
+            raise HTTPException(status_code=422, detail="'source' is required")
+
+        queue: asyncio.Queue[str | None] = asyncio.Queue()
+        loop = asyncio.get_event_loop()
+
+        def _run_pull() -> None:
+            # Build a Rich Console that writes to the queue via a StringIO buffer
+            buf = StringIO()
+            rich_console = Console(file=buf, highlight=False, markup=False)
+
+            class _QueuingConsole:
+                """Proxy that flushes the StringIO buffer into the asyncio queue."""
+
+                def print(self, *args: Any, **kwargs: Any) -> None:
+                    rich_console.print(*args, **kwargs)
+                    line = buf.getvalue()
+                    buf.truncate(0)
+                    buf.seek(0)
+                    for ln in line.splitlines():
+                        asyncio.run_coroutine_threadsafe(queue.put(ln), loop)
+
+            orch = Orchestrator()
+            # Monkey-patch the module-level console used inside orchestrator
+            import opendrop.core.orchestrator as _orch_mod
+
+            original_console = _orch_mod.console
+            _orch_mod.console = _QueuingConsole()  # type: ignore[assignment]
+            try:
+                orch.pull(source, token=token, quant_override=quant)
+            except Exception as exc:
+                asyncio.run_coroutine_threadsafe(queue.put(f"ERROR: {exc}"), loop)
+            finally:
+                _orch_mod.console = original_console
+                asyncio.run_coroutine_threadsafe(queue.put(None), loop)
+
+        async def _event_stream() -> AsyncIterator[str]:
+            loop.run_in_executor(None, _run_pull)
+            while True:
+                line = await queue.get()
+                if line is None:
+                    yield "data: [DONE]\n\n"
+                    break
+                yield f"data: {line}\n\n"
+
+        return StreamingResponse(
+            _event_stream(),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
 
     @app.get("/v1/models")
     async def list_models() -> dict:
