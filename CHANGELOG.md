@@ -7,6 +7,11 @@ and this project uses semantic versioning with beta prereleases.
 
 ## [Unreleased]
 
+### Added
+- `uv.lock` pinning the full dependency graph (including optional extras).
+- Dependabot configuration for uv/pip dependencies and GitHub Actions (weekly).
+- SECURITY.md describing private vulnerability reporting.
+
 ## [0.1.0b2] - 2026-05-14
 
 ### Added
