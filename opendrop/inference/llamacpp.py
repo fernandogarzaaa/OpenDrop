@@ -34,9 +34,7 @@ def _flash_attn_takes_value(binary: str) -> bool:
     [on|off|auto]``. Probe ``--help`` once per binary path (cached).
     """
     try:
-        proc = subprocess.run(
-            [binary, "--help"], capture_output=True, text=True, timeout=15
-        )
+        proc = subprocess.run([binary, "--help"], capture_output=True, text=True, timeout=15)
     except Exception:
         return True  # assume new-style; start() health check surfaces real errors
     help_text = proc.stdout + proc.stderr
@@ -44,6 +42,7 @@ def _flash_attn_takes_value(binary: str) -> bool:
         if "--flash-attn" in line:
             return "on|off" in line
     return True
+
 
 # ---------------------------------------------------------------------------
 # Binary discovery
