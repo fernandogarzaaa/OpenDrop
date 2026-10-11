@@ -169,7 +169,9 @@ class LlamaCppServer:
             str(self.parallel),
         ]
         if self.flash_attn:
-            cmd.append("--flash-attn")
+            # Current llama.cpp builds require an explicit value for
+            # --flash-attn (bare flag errors with "expected value for argument").
+            cmd += ["--flash-attn", "on"]
         cmd.extend(self.extra_args)
         return cmd
 
