@@ -9,6 +9,7 @@ Manages one `llama-server` process per model instance.  Provides:
 
 from __future__ import annotations
 
+import functools
 import os
 import shutil
 import signal
@@ -22,6 +23,26 @@ from pathlib import Path
 from rich.console import Console
 
 console = Console()
+
+
+@functools.lru_cache(maxsize=8)
+def _flash_attn_takes_value(binary: str) -> bool:
+    """Detect whether this llama-server build expects a value for --flash-attn.
+
+    Pre-ggml-org/llama.cpp#9308 builds define ``--flash-attn`` as a bare flag
+    and reject a trailing value; newer builds require ``--flash-attn
+    [on|off|auto]``. Probe ``--help`` once per binary path (cached).
+    """
+    try:
+        proc = subprocess.run([binary, "--help"], capture_output=True, text=True, timeout=15)
+    except Exception:
+        return True  # assume new-style; start() health check surfaces real errors
+    help_text = proc.stdout + proc.stderr
+    for line in help_text.splitlines():
+        if "--flash-attn" in line:
+            return "on|off" in line
+    return True
+
 
 # ---------------------------------------------------------------------------
 # Binary discovery
@@ -169,7 +190,13 @@ class LlamaCppServer:
             str(self.parallel),
         ]
         if self.flash_attn:
-            cmd.append("--flash-attn")
+            # Current llama.cpp builds require an explicit value for
+            # --flash-attn (bare flag errors with "expected value for argument"),
+            # while pre-#9308 builds only accept the bare flag. Probe once.
+            if _flash_attn_takes_value(str(self._binary)):
+                cmd += ["--flash-attn", "on"]
+            else:
+                cmd.append("--flash-attn")
         cmd.extend(self.extra_args)
         return cmd
 
