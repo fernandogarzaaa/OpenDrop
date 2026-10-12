@@ -94,6 +94,13 @@ _WEB_UI = """<!DOCTYPE html>
            border: 1px solid var(--border); padding: 10px 16px; border-radius: var(--radius);
            font-size: .85rem; opacity: 0; transition: opacity .3s; pointer-events: none; }
   #toast.show { opacity: 1; }
+  /* Phones: the fixed 280px sidebar left almost no room for the chat. */
+  @media (max-width: 700px) {
+    body { flex-direction: column; height: auto; min-height: 100vh; overflow: auto; }
+    #sidebar { width: 100%; max-height: 45vh; overflow-y: auto;
+               border-right: 0; border-bottom: 1px solid var(--border); }
+    #main { min-height: 55vh; }
+  }
 </style>
 </head>
 <body>
@@ -102,20 +109,21 @@ _WEB_UI = """<!DOCTYPE html>
   <h1>⬇ OpenDrop</h1>
   <h2>Pull Model</h2>
   <div id="pull-form">
-    <input id="pull-url" type="text" placeholder="HuggingFace URL or org/model" />
+    <input id="pull-url" type="text" aria-label="Hugging Face URL or org/model"
+           placeholder="HuggingFace URL or org/model" />
     <button onclick="pullModel()">Pull</button>
   </div>
   <h2>Models</h2>
   <div id="model-list"></div>
   <div id="settings">
     <div class="setting-row">
-      <label>Temperature</label>
+      <label for="temperature">Temperature</label>
       <span id="temp-val">0.7</span>
     </div>
     <input type="range" id="temperature" min="0" max="2" step="0.05" value="0.7"
            oninput="document.getElementById('temp-val').textContent=this.value">
     <div class="setting-row">
-      <label>Max tokens</label>
+      <label for="max-tokens">Max tokens</label>
       <span id="maxtok-val">1024</span>
     </div>
     <input type="range" id="max-tokens" min="64" max="8192" step="64" value="1024"
@@ -131,7 +139,7 @@ _WEB_UI = """<!DOCTYPE html>
     <button class="btn danger" style="margin-left:8px;padding:4px 10px;font-size:.75rem"
             onclick="clearChat()">Clear</button>
   </div>
-  <div id="messages">
+  <div id="messages" role="log" aria-live="polite">
     <div class="msg system">Welcome to OpenDrop. Select or pull a model to begin.</div>
   </div>
   <div id="input-area">
@@ -152,6 +160,22 @@ function authHeaders(h = {}) {
   if (k) h['Authorization'] = 'Bearer ' + k;
   return h;
 }
+// fetch() wrapper: when the server answers 401 (OPENDROP_API_KEY is set and
+// this browser has no key yet), ask for the key once, remember it, retry.
+// Previously a 401 just showed an empty model list / "cannot reach server".
+async function apiFetch(url, opts = {}, retried = false) {
+  const headers = authHeaders(Object.assign({}, opts.headers || {}));
+  const resp = await fetch(url, Object.assign({}, opts, { headers }));
+  if (resp.status === 401 && !retried) {
+    const k = prompt('This OpenDrop server requires an API key (OPENDROP_API_KEY):');
+    if (k && k.trim()) {
+      localStorage.setItem('opendrop_api_key', k.trim());
+      return apiFetch(url, opts, true);
+    }
+  }
+  if (resp.status === 401) localStorage.removeItem('opendrop_api_key');
+  return resp;
+}
 let activeModel = null;
 let messages = [];
 let streaming = false;
@@ -166,7 +190,11 @@ async function boot() {
 
 async function loadModels() {
   try {
-    const r = await fetch(`${API}/v1/models`, { headers: authHeaders() });
+    const r = await apiFetch(`${API}/v1/models`);
+    if (!r.ok) {
+      showToast(r.status === 401 ? 'API key required' : `Server error ${r.status}`, 'error');
+      return;
+    }
     const data = await r.json();
     renderModels(data.data || []);
   } catch(e) { showToast('Cannot reach OpenDrop server', 'error'); }
@@ -191,7 +219,7 @@ function renderModels(models) {
 
 async function loadHardware() {
   try {
-    const r = await fetch(`${API}/v1/hardware`, { headers: authHeaders() });
+    const r = await apiFetch(`${API}/v1/hardware`);
     if (!r.ok) throw new Error('hardware fetch failed');
     const hw = await r.json();
     const gpuLabel = hw.gpu_name || hw.gpu_kind || 'CPU';
@@ -222,9 +250,9 @@ async function pullModel() {
   showToast('Pull started — streaming progress…');
 
   try {
-    const resp = await fetch(`${API}/v1/pull`, {
+    const resp = await apiFetch(`${API}/v1/pull`, {
       method: 'POST',
-      headers: authHeaders({ 'Content-Type': 'application/json' }),
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ source: url }),
     });
 
@@ -310,11 +338,17 @@ async function sendMessage() {
   streaming = true;
   let fullText = '';
   try {
-    const resp = await fetch(`${API}/v1/chat/completions`, {
+    const resp = await apiFetch(`${API}/v1/chat/completions`, {
       method: 'POST',
-      headers: authHeaders({ 'Content-Type': 'application/json' }),
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
+    if (!resp.ok) {
+      // Error bodies are JSON, not an SSE stream: surface them instead of
+      // rendering nothing.
+      const err = await resp.text();
+      throw new Error(`HTTP ${resp.status}: ${err.slice(0, 300)}`);
+    }
     const reader = resp.body.getReader();
     const decoder = new TextDecoder();
     spinner.remove();
