@@ -177,7 +177,7 @@ def _load_hf_dataset(dataset_id: str, split: str = "train") -> Dataset:
         from datasets import load_dataset  # type: ignore[import]
     except ImportError as exc:
         raise DatasetError(
-            "HuggingFace 'datasets' package not installed. Run: pip install opendrop[training]"
+            "HuggingFace 'datasets' package not installed. Run: pip install 'opendrop[training] @ git+https://github.com/fernandogarzaaa/OpenDrop'"
         ) from exc
 
     ds = load_dataset(dataset_id, split=split)

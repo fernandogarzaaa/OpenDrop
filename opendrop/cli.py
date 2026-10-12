@@ -233,10 +233,9 @@ def serve(host: str | None, port: int | None, reload: bool) -> None:
     import uvicorn
 
     from opendrop.config import get_config
+    from opendrop.inference.security import api_key_from_env, check_bind_allowed
     from opendrop.inference.server import create_app
     from opendrop.ui.web import mount_web_ui
-
-    from opendrop.inference.security import api_key_from_env, check_bind_allowed
 
     cfg = get_config()
     h = host or cfg.server.host

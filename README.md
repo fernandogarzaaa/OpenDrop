@@ -21,8 +21,10 @@ Inspired by the end-to-end philosophy of [ds4.c](https://github.com/fernandogarz
 
 ```bash
 # Install
-pip install -e ".[dev]"          # development
-pip install opendrop             # production (PyPI, coming soon)
+pip install -e ".[dev]"          # development (from a clone)
+pip install "git+https://github.com/fernandogarzaaa/OpenDrop"   # latest from GitHub
+# NOTE: do NOT run `pip install opendrop`: that name on PyPI belongs to an
+# unrelated project (an AirDrop implementation). OpenDrop is not on PyPI yet.
 
 # Pull a model from Hugging Face
 opendrop pull https://huggingface.co/bartowski/Meta-Llama-3.1-8B-Instruct-GGUF
@@ -151,7 +153,14 @@ opendrop fine-tune my-model --data train.jsonl --method mlx --epochs 3
 
 # Full fine-tune (small models, large VRAM)
 opendrop fine-tune my-model --data train.jsonl --method full
+
+# Models that ship custom Python code (modeling_*.py) need an explicit opt-in
+opendrop fine-tune my-model --data train.jsonl --trust-remote-code
 ```
+
+`--trust-remote-code` lets the model repo's own Python code run on your machine
+(arbitrary code execution by whoever controls that repo). It is **off by
+default**; only enable it for repos you trust.
 
 **Supported dataset formats:**
 - JSONL (instruction/response, prompt/completion, conversations)
@@ -179,6 +188,29 @@ opendrop tui                    Launch terminal dashboard
 opendrop hardware               Show hardware profile
 opendrop config                 Show/edit configuration
 ```
+
+---
+
+## API server security
+
+`opendrop serve` is meant for your own machine. Web pages you visit can still
+send requests to `127.0.0.1`, so the server does not trust a request just
+because it is local:
+
+- **Origin check.** Browser requests whose `Origin` is not a loopback origin
+  (`http(s)://localhost`, `127.x.x.x`, `[::1]`, any port) get `403`. CORS only
+  allows those origins. Add more with
+  `OPENDROP_CORS_ORIGINS="https://my-app.example,https://other.example"`.
+- **API key (optional).** Set `OPENDROP_API_KEY=<random string>` to require
+  `Authorization: Bearer <key>` (or `X-API-Key: <key>`) on every route except
+  `/health` and the web UI page. For the web UI, store the key once in the
+  browser console: `localStorage.setItem('opendrop_api_key', '<key>')`.
+- **Public binds need a key.** `opendrop serve --host 0.0.0.0` (or any
+  non-loopback address) refuses to start unless `OPENDROP_API_KEY` is set.
+- `POST /v1/pull` requires `Content-Type: application/json`.
+
+OpenAI clients pass the key as their API key, e.g.
+`OpenAI(base_url="http://localhost:11400/v1", api_key=os.environ["OPENDROP_API_KEY"])`.
 
 ---
 
