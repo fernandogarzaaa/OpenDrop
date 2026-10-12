@@ -9,6 +9,10 @@ speaks the OpenAI REST API.  Endpoints:
   POST /v1/pull                    — pull a model with SSE progress stream
   GET  /health                     — liveness check
 
+Security (see opendrop/inference/security.py): browser requests from
+non-loopback origins are refused, CORS only allows loopback origins (plus
+OPENDROP_CORS_ORIGINS), and OPENDROP_API_KEY turns on bearer-token auth.
+
 The server proxies requests to the appropriate llama-server instance based on
 the `model` field in the request body.  If the model is not currently running,
 it is auto-started.
@@ -36,6 +40,15 @@ from opendrop.core.hardware import detect_hardware
 from opendrop.core.orchestrator import Orchestrator
 from opendrop.core.registry import AsyncRegistry
 from opendrop.inference.llamacpp import ServerManager, get_manager
+from opendrop.inference.security import (
+    LOOPBACK_ORIGIN_RE,
+    PUBLIC_PATHS,
+    api_key_from_env,
+    extra_origins_from_env,
+    is_allowed_origin,
+    key_matches,
+    presented_key,
+)
 
 # ---------------------------------------------------------------------------
 # Pydantic models (subset of OpenAI API)
@@ -79,8 +92,18 @@ def create_app(
     manager: ServerManager | None = None,
     registry: AsyncRegistry | None = None,
     allow_cors: bool = True,
+    api_key: str | None = None,
+    extra_origins: frozenset[str] | None = None,
 ) -> FastAPI:
+    """Build the API app.
+
+    ``api_key`` defaults to ``$OPENDROP_API_KEY``; when set, every route except
+    ``/health`` and the web UI page requires it. ``extra_origins`` (default
+    ``$OPENDROP_CORS_ORIGINS``) are browser origins allowed besides loopback.
+    """
     cfg = get_config()
+    _api_key = api_key if api_key is not None else api_key_from_env()
+    _extra_origins = extra_origins if extra_origins is not None else extra_origins_from_env()
     _manager = manager or get_manager()
     _registry: AsyncRegistry = registry or AsyncRegistry(cfg.registry_db())
 
@@ -92,12 +115,42 @@ def create_app(
 
     app = FastAPI(title="OpenDrop", version="0.1.0b1", lifespan=lifespan)
 
+    @app.middleware("http")
+    async def _guard(request: Request, call_next: Any) -> Any:
+        # 1. Browser requests from foreign origins never reach a route. Without
+        #    this, any web page could POST to 127.0.0.1 (a text/plain "simple"
+        #    request needs no CORS preflight) and trigger multi-GB downloads.
+        origin = request.headers.get("origin")
+        if origin is not None and not is_allowed_origin(origin, _extra_origins):
+            return JSONResponse(status_code=403, content={"detail": "origin not allowed"})
+        # 2. Optional API key on everything except liveness / the UI shell.
+        if (
+            _api_key
+            and request.method != "OPTIONS"
+            and request.url.path not in PUBLIC_PATHS
+            and not key_matches(
+                presented_key(
+                    request.headers.get("authorization"), request.headers.get("x-api-key")
+                ),
+                _api_key,
+            )
+        ):
+            return JSONResponse(
+                status_code=401,
+                content={"detail": "missing or invalid API key"},
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        return await call_next(request)
+
     if allow_cors:
+        # Added after the guard so it wraps it: preflights from allowed origins
+        # are answered here; foreign origins get no CORS headers.
         app.add_middleware(
             CORSMiddleware,
-            allow_origins=["*"],
-            allow_methods=["*"],
-            allow_headers=["*"],
+            allow_origin_regex=LOOPBACK_ORIGIN_RE.pattern,
+            allow_origins=sorted(_extra_origins),
+            allow_methods=["GET", "POST", "OPTIONS"],
+            allow_headers=["Authorization", "Content-Type", "X-API-Key"],
         )
 
     # -----------------------------------------------------------------------
@@ -180,6 +233,11 @@ def create_app(
 
     @app.post("/v1/pull")
     async def pull_model(request: Request) -> StreamingResponse:
+        # Require a JSON content type: it forces a CORS preflight for any
+        # cross-origin caller instead of allowing a no-preflight simple POST.
+        ctype = request.headers.get("content-type", "").split(";")[0].strip().lower()
+        if ctype != "application/json":
+            raise HTTPException(status_code=415, detail="Content-Type must be application/json")
         body = await request.json()
         source: str = body.get("source", "")
         token: str | None = body.get("token", None)

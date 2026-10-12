@@ -236,9 +236,16 @@ def serve(host: str | None, port: int | None, reload: bool) -> None:
     from opendrop.inference.server import create_app
     from opendrop.ui.web import mount_web_ui
 
+    from opendrop.inference.security import api_key_from_env, check_bind_allowed
+
     cfg = get_config()
     h = host or cfg.server.host
     p = port or cfg.server.port
+    try:
+        check_bind_allowed(h, api_key_from_env())
+    except ValueError as exc:
+        console.print(f"[red]{exc}[/red]")
+        sys.exit(2)
 
     console.print(f"[bold]OpenDrop serving on[/bold] http://{h}:{p}")
     console.print(f"  API:    http://{h}:{p}/v1")
@@ -410,6 +417,12 @@ def rm(model_id: str, keep_files: bool) -> None:
 )
 @_token_option
 @click.option("--no-gguf", is_flag=True, help="Skip GGUF conversion after training.")
+@click.option(
+    "--trust-remote-code",
+    is_flag=True,
+    help="Allow the model repo's custom Python code to run (arbitrary code execution; "
+    "only for repos you trust). Off by default.",
+)
 def fine_tune(
     model_id: str,
     data: str,
@@ -421,6 +434,7 @@ def fine_tune(
     output: str | None,
     token: str | None,
     no_gguf: bool,
+    trust_remote_code: bool,
 ) -> None:
     """Fine-tune MODEL_ID with a dataset."""
     from opendrop.config import get_config
@@ -442,6 +456,7 @@ def fine_tune(
         learning_rate=lr,
         num_epochs=epochs,
         batch_size=batch_size,
+        trust_remote_code=trust_remote_code,
     )
 
     console.print(

@@ -145,6 +145,13 @@ _WEB_UI = """<!DOCTYPE html>
 
 <script>
 const API = '';  // same origin
+// When the server runs with OPENDROP_API_KEY, store the key once in this
+// browser: localStorage.setItem('opendrop_api_key', '<key>')
+function authHeaders(h = {}) {
+  const k = localStorage.getItem('opendrop_api_key');
+  if (k) h['Authorization'] = 'Bearer ' + k;
+  return h;
+}
 let activeModel = null;
 let messages = [];
 let streaming = false;
@@ -159,7 +166,7 @@ async function boot() {
 
 async function loadModels() {
   try {
-    const r = await fetch(`${API}/v1/models`);
+    const r = await fetch(`${API}/v1/models`, { headers: authHeaders() });
     const data = await r.json();
     renderModels(data.data || []);
   } catch(e) { showToast('Cannot reach OpenDrop server', 'error'); }
@@ -184,7 +191,7 @@ function renderModels(models) {
 
 async function loadHardware() {
   try {
-    const r = await fetch(`${API}/v1/hardware`);
+    const r = await fetch(`${API}/v1/hardware`, { headers: authHeaders() });
     if (!r.ok) throw new Error('hardware fetch failed');
     const hw = await r.json();
     const gpuLabel = hw.gpu_name || hw.gpu_kind || 'CPU';
@@ -217,7 +224,7 @@ async function pullModel() {
   try {
     const resp = await fetch(`${API}/v1/pull`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ source: url }),
     });
 
@@ -305,7 +312,7 @@ async function sendMessage() {
   try {
     const resp = await fetch(`${API}/v1/chat/completions`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(payload),
     });
     const reader = resp.body.getReader();
