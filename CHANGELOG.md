@@ -7,6 +7,16 @@ and this project uses semantic versioning with beta prereleases.
 
 ## [Unreleased]
 
+### Fixed
+- Web UI: when the server runs with `OPENDROP_API_KEY`, a 401 now asks for
+  the key once (stored in this browser) and retries, instead of showing an
+  empty model list / "Cannot reach OpenDrop server".
+- Web UI: chat errors (non-2xx from `/v1/chat/completions`) are shown in
+  the reply bubble instead of an empty answer.
+- Web UI: usable on phones (sidebar stacks above the chat under 700px);
+  the pull box and sliders have accessible labels; the message list is an
+  `aria-live` log.
+
 ### Added
 - `uv.lock` pinning the full dependency graph (including optional extras).
 - Dependabot configuration for uv/pip dependencies and GitHub Actions (weekly).
