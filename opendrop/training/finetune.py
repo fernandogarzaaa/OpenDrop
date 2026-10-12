@@ -62,6 +62,9 @@ class TrainingConfig:
     save_steps: int = 100
     logging_steps: int = 10
     output_quant: str = "Q4_K_M"  # Quant for merged GGUF output
+    # Executing a Hub repo's custom Python (modeling_*.py) is arbitrary code
+    # execution from whoever controls that repo. Off unless explicitly enabled.
+    trust_remote_code: bool = False
 
 
 @dataclass
@@ -83,7 +86,9 @@ def _require_torch() -> None:
     try:
         import torch  # noqa: F401
     except ImportError as exc:
-        raise RuntimeError("PyTorch not installed. Run: pip install opendrop[training]") from exc
+        raise RuntimeError(
+            "PyTorch not installed. Run: pip install 'opendrop[training] @ git+https://github.com/fernandogarzaaa/OpenDrop'"
+        ) from exc
 
 
 def _require_transformers() -> None:
@@ -91,7 +96,7 @@ def _require_transformers() -> None:
         import transformers  # noqa: F401
     except ImportError as exc:
         raise RuntimeError(
-            "Transformers not installed. Run: pip install opendrop[training]"
+            "Transformers not installed. Run: pip install 'opendrop[training] @ git+https://github.com/fernandogarzaaa/OpenDrop'"
         ) from exc
 
 
@@ -99,14 +104,18 @@ def _require_peft() -> None:
     try:
         import peft  # noqa: F401
     except ImportError as exc:
-        raise RuntimeError("PEFT not installed. Run: pip install opendrop[training]") from exc
+        raise RuntimeError(
+            "PEFT not installed. Run: pip install 'opendrop[training] @ git+https://github.com/fernandogarzaaa/OpenDrop'"
+        ) from exc
 
 
 def _require_mlx() -> None:
     try:
         import mlx  # noqa: F401
     except ImportError as exc:
-        raise RuntimeError("MLX not installed. Run: pip install opendrop[training-apple]") from exc
+        raise RuntimeError(
+            "MLX not installed. Run: pip install 'opendrop[training-apple] @ git+https://github.com/fernandogarzaaa/OpenDrop'"
+        ) from exc
 
 
 # ---------------------------------------------------------------------------
@@ -140,7 +149,9 @@ def _train_lora_peft(
         has_trl = False
 
     console.print(f"[bold]Loading tokenizer for {model_id} …[/bold]")
-    tok = AutoTokenizer.from_pretrained(model_id, token=token, trust_remote_code=True)
+    tok = AutoTokenizer.from_pretrained(
+        model_id, token=token, trust_remote_code=cfg.trust_remote_code
+    )
     if tok.pad_token is None:
         tok.pad_token = tok.eos_token
 
@@ -162,7 +173,7 @@ def _train_lora_peft(
     model = AutoModelForCausalLM.from_pretrained(
         model_id,
         token=token,
-        trust_remote_code=True,
+        trust_remote_code=cfg.trust_remote_code,
         quantization_config=quant_cfg,
         device_map="auto",
         torch_dtype=torch.float16 if not quant_cfg else None,
@@ -257,7 +268,7 @@ def _train_mlx(
         import mlx_lm  # type: ignore[import]  # noqa: F401
     except ImportError as exc:
         raise RuntimeError(
-            "mlx-lm not installed. Run: pip install opendrop[training-apple]"
+            "mlx-lm not installed. Run: pip install 'opendrop[training-apple] @ git+https://github.com/fernandogarzaaa/OpenDrop'"
         ) from exc
 
     # Write dataset as JSONL for mlx-lm
@@ -333,6 +344,11 @@ def fine_tune(
     """
     if cfg is None:
         cfg = TrainingConfig()
+    if cfg.trust_remote_code:
+        console.print(
+            "[yellow]Warning: trust_remote_code is enabled. Custom Python code from "
+            f"{model_id!r} will be executed. Only use this for repos you trust.[/yellow]"
+        )
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -372,13 +388,15 @@ def fine_tune(
         )
 
         console.print("[bold]Full fine-tune — loading model …[/bold]")
-        tok = AutoTokenizer.from_pretrained(model_id, token=token, trust_remote_code=True)
+        tok = AutoTokenizer.from_pretrained(
+            model_id, token=token, trust_remote_code=cfg.trust_remote_code
+        )
         if tok.pad_token is None:
             tok.pad_token = tok.eos_token
         model = AutoModelForCausalLM.from_pretrained(
             model_id,
             token=token,
-            trust_remote_code=True,
+            trust_remote_code=cfg.trust_remote_code,
             torch_dtype=torch.float16,
             device_map="auto",
         )
