@@ -8,6 +8,12 @@ and this project uses semantic versioning with beta prereleases.
 ## [Unreleased]
 
 ### Fixed
+- Web UI was dead on load: the page is a non-raw Python string, so the two
+  `split('\n')` calls in its script were rendered with a real newline inside
+  a JS string literal (`SyntaxError: Invalid or unexpected token`). Nothing
+  ran: models never listed, hardware stayed on "Loading hardware...", and
+  Send did nothing. The template is now a raw string, and a test parses the
+  served script with `node --check`.
 - Web UI: when the server runs with `OPENDROP_API_KEY`, a 401 now asks for
   the key once (stored in this browser) and retries, instead of showing an
   empty model list / "Cannot reach OpenDrop server".

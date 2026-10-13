@@ -14,7 +14,7 @@ from fastapi.responses import HTMLResponse
 # Embedded HTML/JS/CSS Web UI
 # ---------------------------------------------------------------------------
 
-_WEB_UI = """<!DOCTYPE html>
+_WEB_UI = r"""<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
