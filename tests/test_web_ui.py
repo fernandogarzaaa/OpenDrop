@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 import shutil
 import subprocess
 
@@ -12,9 +11,10 @@ from opendrop.ui.web import _WEB_UI
 
 
 def _script() -> str:
-    scripts = re.findall(r"<script[^>]*>(.*?)</script>", _WEB_UI, re.S)
-    assert scripts, "no inline <script> in the Web UI"
-    return scripts[-1]
+    # The page has exactly one inline script; take the text between its tags.
+    start = _WEB_UI.rindex("<script>") + len("<script>")
+    end = _WEB_UI.index("</script>", start)
+    return _WEB_UI[start:end]
 
 
 def test_js_newline_escapes_not_turned_into_raw_newlines() -> None:
